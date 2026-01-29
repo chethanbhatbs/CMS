@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import Breadcrumb from '@/components/Breadcrumb';
 import {
   Dialog,
   DialogContent,
@@ -23,13 +22,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Edit, Trash2, MapPin, MoreVertical } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, MapPin, MoreVertical, Upload } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import Breadcrumb from '@/components/Breadcrumb';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
@@ -91,6 +91,7 @@ const getStatesForCountry = (countryCode) => {
 const LocationFormDialog = ({ isOpen, onClose, onSubmit, title, description, formData, onFieldChange }) => {
   const [availableStates, setAvailableStates] = useState([]);
   const [isLoadingCity, setIsLoadingCity] = useState(false);
+  const [imagePreview, setImagePreview] = useState(formData.image_url || '');
 
   useEffect(() => {
     if (formData.country) {
@@ -98,6 +99,10 @@ const LocationFormDialog = ({ isOpen, onClose, onSubmit, title, description, for
       setAvailableStates(getStatesForCountry(countryCode));
     }
   }, [formData.country]);
+
+  useEffect(() => {
+    setImagePreview(formData.image_url || '');
+  }, [formData.image_url]);
 
   const fetchCityFromPostalCode = async (postalCode, country) => {
     if (!postalCode || postalCode.length < 3) return;
@@ -117,7 +122,9 @@ const LocationFormDialog = ({ isOpen, onClose, onSubmit, title, description, for
           onFieldChange('longitude', parseFloat(place.longitude).toFixed(5));
         }
         
-        toast.success('City auto-filled from postal code');
+        toast.success('City auto-filled from postal code', {
+          style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+        });
       }
     } catch (error) {
       console.log('Could not fetch city from postal code');
@@ -151,10 +158,54 @@ const LocationFormDialog = ({ isOpen, onClose, onSubmit, title, description, for
     if (parts.length === 2 && parts[1].length > 5) {
       const truncated = num.toFixed(5);
       onFieldChange(field, truncated);
-      toast.info(`${field === 'latitude' ? 'Latitude' : 'Longitude'} rounded to 5 decimal places`);
+      toast.info(`${field === 'latitude' ? 'Latitude' : 'Longitude'} rounded to 5 decimal places`, {
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
     }
     
     return true;
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Invalid file type', {
+        description: 'Please upload an image file (JPG, PNG, WebP)',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File too large', {
+        description: 'Image must be less than 5MB',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+      return;
+    }
+
+    // Create preview and base64 data URL
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const img = new Image();
+      img.onload = () => {
+        // Check dimensions (recommended 1200x800 or 16:9)
+        if (img.width < 800 || img.height < 600) {
+          toast.warning('Image dimensions', {
+            description: `Image is ${img.width}x${img.height}px. Recommended: 1200x800px or larger`,
+            style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+          });
+        }
+        setImagePreview(reader.result);
+        onFieldChange('image_url', reader.result);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   const addressRemaining = ADDRESS_MAX_LENGTH - (formData.address?.length || 0);
@@ -162,8 +213,8 @@ const LocationFormDialog = ({ isOpen, onClose, onSubmit, title, description, for
   if (!isOpen) return null;
   
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl" onPointerDownOutside={(e) => e.preventDefault()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -183,7 +234,7 @@ const LocationFormDialog = ({ isOpen, onClose, onSubmit, title, description, for
 
           <div className="col-span-2">
             <Label htmlFor="country">Country *</Label>
-            <Select value={formData.country} onValueChange={handleCountryChange}>
+            <Select value={formData.country || undefined} onValueChange={handleCountryChange}>
               <SelectTrigger data-testid="country-select">
                 <SelectValue placeholder="Select country" />
               </SelectTrigger>
@@ -200,7 +251,7 @@ const LocationFormDialog = ({ isOpen, onClose, onSubmit, title, description, for
           <div>
             <Label htmlFor="state">State / Province *</Label>
             {availableStates.length > 0 ? (
-              <Select value={formData.state} onValueChange={(value) => onFieldChange('state', value)}>
+              <Select value={formData.state || undefined} onValueChange={(value) => onFieldChange('state', value)}>
                 <SelectTrigger data-testid="state-select">
                   <SelectValue placeholder="Select state" />
                 </SelectTrigger>
@@ -305,28 +356,49 @@ const LocationFormDialog = ({ isOpen, onClose, onSubmit, title, description, for
           </div>
           
           <div className="col-span-2">
-            <Label htmlFor="image_url">Location Image URL</Label>
-            <Input
-              id="image_url"
-              value={formData.image_url}
-              onChange={(e) => onFieldChange('image_url', e.target.value)}
-              placeholder="https://example.com/location-image.jpg"
-              data-testid="location-image-input"
-              autoComplete="off"
-            />
+            <Label htmlFor="image_upload">Location Image</Label>
+            <div className="flex gap-2">
+              <Input
+                id="image_upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                data-testid="location-image-upload"
+                className="flex-1"
+              />
+              <Button type="button" variant="outline" size="icon">
+                <Upload className="h-4 w-4" />
+              </Button>
+            </div>
             <p className="text-xs text-slate-400 mt-1">
-              Recommended: 1200x800px or 16:9 aspect ratio for best display
+              Recommended: 1200x800px (16:9 ratio), max 5MB. Supported: JPG, PNG, WebP
             </p>
-            {formData.image_url && (
+            {imagePreview && (
               <div className="mt-2">
                 <img 
-                  src={formData.image_url} 
+                  src={imagePreview} 
                   alt="Preview" 
-                  className="w-32 h-20 object-cover rounded border"
+                  className="w-full h-32 object-cover rounded border"
                   onError={(e) => { e.target.style.display = 'none'; }}
                 />
               </div>
             )}
+          </div>
+
+          <div className="col-span-2">
+            <Label htmlFor="location_status">Location Status *</Label>
+            <Select value={formData.location_status || 'ACTIVE'} onValueChange={(value) => onFieldChange('location_status', value)}>
+              <SelectTrigger data-testid="location-status-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="INACTIVE">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-slate-500 mt-1">
+              Inactive locations are hidden from public apps but remain in CMS for management
+            </p>
           </div>
         </div>
         <DialogFooter>
@@ -367,6 +439,7 @@ const ChargingLocations = () => {
     latitude: '',
     longitude: '',
     image_url: '',
+    location_status: 'ACTIVE',
   });
 
   useEffect(() => {
@@ -410,6 +483,7 @@ const ChargingLocations = () => {
       latitude: '',
       longitude: '',
       image_url: '',
+      location_status: 'ACTIVE',
     });
   };
 
@@ -427,6 +501,7 @@ const ChargingLocations = () => {
 
       toast.success('Location added successfully!', {
         description: `${formData.name} has been added to your network`,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
       });
       setIsAddDialogOpen(false);
       resetForm();
@@ -436,6 +511,7 @@ const ChargingLocations = () => {
       const errorMsg = error.response?.data?.detail || 'Failed to add location';
       toast.error('Failed to add location', {
         description: errorMsg,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
       });
     }
   };
@@ -454,6 +530,7 @@ const ChargingLocations = () => {
 
       toast.success('Location updated successfully!', {
         description: `${formData.name} has been updated`,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
       });
       setIsEditDialogOpen(false);
       setSelectedLocation(null);
@@ -464,6 +541,7 @@ const ChargingLocations = () => {
       const errorMsg = error.response?.data?.detail || 'Failed to update location';
       toast.error('Failed to update location', {
         description: errorMsg,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
       });
     }
   };
@@ -478,6 +556,7 @@ const ChargingLocations = () => {
 
       toast.success('Location deleted successfully!', {
         description: `${locationName} has been removed from your network`,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
       });
       fetchLocations(searchQuery);
     } catch (error) {
@@ -485,6 +564,7 @@ const ChargingLocations = () => {
       const errorMsg = error.response?.data?.detail || 'Failed to delete location';
       toast.error('Failed to delete location', {
         description: errorMsg,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
       });
     }
   };
@@ -507,6 +587,7 @@ const ChargingLocations = () => {
 
       toast.success(`Location ${action}d successfully!`, {
         description: `${locationName} is now ${newStatus}`,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
       });
       fetchLocations(searchQuery);
     } catch (error) {
@@ -514,22 +595,25 @@ const ChargingLocations = () => {
       const errorMsg = error.response?.data?.detail || 'Failed to update status';
       toast.error(`Failed to ${action} location`, {
         description: errorMsg,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
       });
     }
   };
 
   const openEditDialog = (location) => {
     setSelectedLocation(location);
+    // Pre-fill ALL data from location
     setFormData({
-      name: location.name,
-      address: location.address,
-      city: location.city,
-      state: location.state,
-      postal_code: location.postal_code,
-      country: location.country,
+      name: location.name || '',
+      address: location.address || '',
+      city: location.city || '',
+      state: location.state || '',
+      postal_code: location.postal_code || '',
+      country: location.country || '',
       latitude: location.latitude ? location.latitude.toString() : '',
       longitude: location.longitude ? location.longitude.toString() : '',
       image_url: location.image_url || '',
+      location_status: location.status || 'ACTIVE',
     });
     setIsEditDialogOpen(true);
   };
@@ -665,7 +749,6 @@ const ChargingLocations = () => {
             </Table>
           )}
           
-          {/* Pagination */}
           {!loading && locations.length > itemsPerPage && (
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-slate-600">
