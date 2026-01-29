@@ -317,11 +317,26 @@ class RolePermission(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     role_name: str
     description: str
-    permissions: List[str] = []  # List of permission keys
+    permissions: Dict[str, Dict[str, bool]] = {}  # {"module_name": {"view": True, "modify": False}}
     user_count: int = 0
     status: str = "ACTIVE"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class UserInvitation(BaseModel):
+    """User invitation with activation token"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    email: EmailStr
+    full_name: str
+    phone: Optional[str] = None
+    role: str
+    invitation_token: str
+    expires_at: datetime
+    used: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class RFIDCard(BaseModel):
