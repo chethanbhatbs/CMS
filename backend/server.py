@@ -482,10 +482,12 @@ class OEMCreate(BaseModel):
     oem_name: str
     website: Optional[str] = None
     support_email: Optional[EmailStr] = None
-    protocol: str = "OCPP 1.6"
-    charger_type: str = "DC"
-    max_power_kw: float
-    max_voltage_v: float
+
+
+class OEMUpdate(BaseModel):
+    oem_name: Optional[str] = None
+    website: Optional[str] = None
+    support_email: Optional[EmailStr] = None
 
 
 class OEMResponse(BaseModel):
@@ -493,10 +495,6 @@ class OEMResponse(BaseModel):
     oem_name: str
     website: Optional[str]
     support_email: Optional[str]
-    protocol: str
-    charger_type: str
-    max_power_kw: float
-    max_voltage_v: float
     status: str
     created_at: datetime
     updated_at: datetime
