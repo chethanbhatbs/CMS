@@ -532,6 +532,53 @@ async def create_oem(
     return OEMResponse(**oem.model_dump())
 
 
+@api_router.put("/oems/{oem_id}", response_model=OEMResponse)
+async def update_oem(
+    oem_id: str,
+    oem_data: OEMUpdate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update an existing OEM"""
+    existing_oem = await db.oems.find_one({"id": oem_id}, {"_id": 0})
+    
+    if not existing_oem:
+        raise HTTPException(status_code=404, detail="OEM not found")
+    
+    update_data = {k: v for k, v in oem_data.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.oems.update_one(
+        {"id": oem_id},
+        {"$set": update_data}
+    )
+    
+    updated_oem = await db.oems.find_one({"id": oem_id}, {"_id": 0})
+    
+    if isinstance(updated_oem.get("created_at"), str):
+        updated_oem["created_at"] = datetime.fromisoformat(updated_oem["created_at"])
+    if isinstance(updated_oem.get("updated_at"), str):
+        updated_oem["updated_at"] = datetime.fromisoformat(updated_oem["updated_at"])
+    
+    return updated_oem
+
+
+@api_router.delete("/oems/{oem_id}")
+async def delete_oem(
+    oem_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Delete (soft delete) an OEM"""
+    result = await db.oems.update_one(
+        {"id": oem_id},
+        {"$set": {"status": "INACTIVE", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="OEM not found")
+    
+    return {"message": "OEM deleted successfully"}
+
+
 # ============================================
 # CHARGER MODEL MANAGEMENT ENDPOINTS
 # ============================================
