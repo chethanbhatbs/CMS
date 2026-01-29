@@ -94,6 +94,7 @@ const menuStructure = [
       { icon: Shield, label: 'Admin User Management', path: '/admin/users' },
       { icon: Building2, label: 'Franchise Management', path: '/admin/franchises' },
       { icon: UserCog, label: 'Role Management', path: '/admin/roles' },
+      { icon: Package, label: 'OEM Management', path: '/admin/oems' },
       { icon: CreditCard, label: 'RFID Management', path: '/admin/rfid' },
       { icon: DollarSign, label: 'Tariff Management', path: '/admin/tariffs' },
       { icon: Package, label: 'Asset Management', path: '/admin/assets' },
