@@ -598,6 +598,7 @@ class ChargerModelResponse(BaseModel):
     oem_id: str
     model_name: str
     description: Optional[str]
+    protocol: str
     charger_type: str
     max_power_kw: float
     max_voltage_v: float
