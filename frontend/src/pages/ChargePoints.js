@@ -606,12 +606,11 @@ const ChargePoints = () => {
                   <TableHead>Vendor / Model</TableHead>
                   <TableHead>Connectors</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Online</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {chargePoints.map((cp) => (
+                {paginatedChargePoints.map((cp) => (
                   <TableRow key={cp.id} data-testid={`chargepoint-row-${cp.id}`}>
                     <TableCell className="font-mono text-sm">
                       <Link
