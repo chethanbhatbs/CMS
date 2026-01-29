@@ -503,6 +503,7 @@ const ChargePoints = () => {
 
   const openEditDialog = (cp) => {
     setSelectedChargePoint(cp);
+    const goLiveDate = cp.go_live_date ? new Date(cp.go_live_date).toISOString().split('T')[0] : '';
     setFormData({
       charge_point_id: cp.charge_point_id,
       name: cp.name,
@@ -511,6 +512,7 @@ const ChargePoints = () => {
       charger_model_id: cp.charger_model_id || '',
       serial_number: cp.serial_number || '',
       firmware_version: cp.firmware_version || '',
+      go_live_date: goLiveDate,
     });
     
     // Trigger model filtering for edit mode
