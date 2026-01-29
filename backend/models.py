@@ -364,6 +364,60 @@ class Asset(BaseModel):
 
 
 # ============================================
+# OEM & CHARGER MODEL
+# ============================================
+
+class ChargerType(str, Enum):
+    AC = "AC"
+    DC = "DC"
+    HYBRID = "HYBRID"
+
+
+class ConnectorConfig(BaseModel):
+    """Connector configuration for a charger model"""
+    connector_number: int
+    connector_type: str  # Type2, CCS, CHAdeMO, Type1
+    max_power_kw: float
+    max_voltage_v: float
+    frequency_hz: Optional[int] = 50  # 50 or 60 Hz
+
+
+class OEM(BaseModel):
+    """OEM (Original Equipment Manufacturer) for charge points"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    oem_name: str
+    website: Optional[str] = None
+    support_email: Optional[EmailStr] = None
+    protocol: str = "OCPP 1.6"  # OCPP 1.6, OCPP 2.0.1
+    charger_type: ChargerType = ChargerType.DC
+    max_power_kw: float
+    max_voltage_v: float
+    status: str = "ACTIVE"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ChargerModel(BaseModel):
+    """Charger model with pre-configured connectors"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    oem_id: str
+    model_name: str
+    description: Optional[str] = None
+    charger_type: ChargerType = ChargerType.DC
+    max_power_kw: float
+    max_voltage_v: float
+    connector_configs: List[ConnectorConfig] = []  # Max 4 connectors
+    image_url: Optional[str] = None
+    status: str = "ACTIVE"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ============================================
 # PASSWORD RESET (Keep existing)
 # ============================================
 
