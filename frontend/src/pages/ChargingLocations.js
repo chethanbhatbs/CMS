@@ -340,6 +340,7 @@ const ChargingLocations = () => {
     country: '',
     latitude: '',
     longitude: '',
+    image_url: '',
   });
 
   useEffect(() => {
