@@ -487,7 +487,15 @@ const ChargePoints = () => {
               <TableBody>
                 {chargePoints.map((cp) => (
                   <TableRow key={cp.id} data-testid={`chargepoint-row-${cp.id}`}>
-                    <TableCell className="font-mono text-sm">{cp.charge_point_id}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      <Link
+                        to={`/charge-points/${cp.id}`}
+                        className="text-primary hover:underline font-medium"
+                        data-testid={`cp-link-${cp.id}`}
+                      >
+                        {cp.charge_point_id}
+                      </Link>
+                    </TableCell>
                     <TableCell className="font-medium">{cp.name}</TableCell>
                     <TableCell className="text-sm">{getLocationName(cp.location_id)}</TableCell>
                     <TableCell className="text-sm text-slate-600">{cp.vendor} / {cp.model}</TableCell>
