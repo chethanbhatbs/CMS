@@ -1114,6 +1114,7 @@ async def delete_charge_point(
 
 # Include the router in the main app
 app.include_router(api_router)
+app.include_router(ocpp_router)  # Add OCPP WebSocket router
 
 app.add_middleware(
     CORSMiddleware,
