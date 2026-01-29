@@ -22,21 +22,20 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Edit, Trash2, Zap, MoreVertical, X } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Zap, MoreVertical, Info } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
-
-const CONNECTOR_TYPES = ['Type2', 'CCS', 'CHAdeMO', 'Type1'];
 
 const ChargePointFormDialog = ({ 
   isOpen, 
@@ -48,10 +47,19 @@ const ChargePointFormDialog = ({
   formData, 
   onFieldChange,
   locations,
-  onAddConnector,
-  onRemoveConnector,
-  onUpdateConnector
+  oems,
+  chargerModels,
+  onOEMChange,
+  selectedModelDetails
 }) => {
+  const isFormValid = () => {
+    return formData.charge_point_id && 
+           formData.name && 
+           formData.location_id && 
+           formData.oem_id && 
+           formData.charger_model_id;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()}>
@@ -59,148 +67,156 @@ const ChargePointFormDialog = ({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-4 py-4">
-          <div className="col-span-2">
-            <Label htmlFor="charge_point_id">Charge Point ID (OCPP) *</Label>
-            <Input
-              id="charge_point_id"
-              value={formData.charge_point_id}
-              onChange={(e) => onFieldChange('charge_point_id', e.target.value)}
-              placeholder="CP001"
-              disabled={isEdit}
-              data-testid="chargepoint-id-input"
-            />
-          </div>
-          <div className="col-span-2">
-            <Label htmlFor="name">Charge Point Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => onFieldChange('name', e.target.value)}
-              placeholder="Fast Charger 1"
-              data-testid="chargepoint-name-input"
-            />
-          </div>
-          <div className="col-span-2">
-            <Label htmlFor="location_id">Location *</Label>
-            <Select value={formData.location_id} onValueChange={(value) => onFieldChange('location_id', value)}>
-              <SelectTrigger data-testid="location-select">
-                <SelectValue placeholder="Select location" />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map((location) => (
-                  <SelectItem key={location.id} value={location.id}>
-                    {location.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="vendor">Vendor *</Label>
-            <Input
-              id="vendor"
-              value={formData.vendor}
-              onChange={(e) => onFieldChange('vendor', e.target.value)}
-              placeholder="ABB"
-              data-testid="vendor-input"
-            />
-          </div>
-          <div>
-            <Label htmlFor="model">Model *</Label>
-            <Input
-              id="model"
-              value={formData.model}
-              onChange={(e) => onFieldChange('model', e.target.value)}
-              placeholder="Terra 54"
-              data-testid="model-input"
-            />
-          </div>
-          <div>
-            <Label htmlFor="serial_number">Serial Number</Label>
-            <Input
-              id="serial_number"
-              value={formData.serial_number}
-              onChange={(e) => onFieldChange('serial_number', e.target.value)}
-              placeholder="SN123456"
-              data-testid="serial-input"
-            />
-          </div>
-          <div>
-            <Label htmlFor="firmware_version">Firmware Version</Label>
-            <Input
-              id="firmware_version"
-              value={formData.firmware_version}
-              onChange={(e) => onFieldChange('firmware_version', e.target.value)}
-              placeholder="1.2.3"
-              data-testid="firmware-input"
-            />
-          </div>
-          
-          <div className="col-span-2 mt-4">
-            <div className="flex items-center justify-between mb-3">
-              <Label className="text-base">Connectors</Label>
-              <Button type="button" size="sm" onClick={onAddConnector} data-testid="add-connector-btn">
-                <Plus className="h-4 w-4 mr-1" /> Add Connector
-              </Button>
+        <div className="space-y-4 py-4">
+          {/* Charge Point Basic Info */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <Label htmlFor="charge_point_id">Charge Point ID (OCPP) <span className="text-red-500">*</span></Label>
+              <Input
+                id="charge_point_id"
+                value={formData.charge_point_id}
+                onChange={(e) => onFieldChange('charge_point_id', e.target.value)}
+                placeholder="CP001"
+                disabled={isEdit}
+                data-testid="chargepoint-id-input"
+              />
             </div>
-            {formData.connectors.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center py-4 border border-dashed rounded-md">
-                No connectors added. Click "Add Connector" to add one.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {formData.connectors.map((connector, index) => (
-                  <div key={index} className="p-4 border rounded-md relative">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-2 right-2"
-                      onClick={() => onRemoveConnector(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <Label className="text-xs">Connector ID</Label>
-                        <Input
-                          type="text"
-                          value={connector.connector_id}
-                          onChange={(e) => onUpdateConnector(index, 'connector_id', parseInt(e.target.value) || 1)}
-                          className="h-9"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Type</Label>
-                        <Select
-                          value={connector.connector_type}
-                          onValueChange={(value) => onUpdateConnector(index, 'connector_type', value)}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CONNECTOR_TYPES.map((type) => (
-                              <SelectItem key={type} value={type}>{type}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Max Power (kW)</Label>
-                        <Input
-                          type="text"
-                          value={connector.power_kw}
-                          onChange={(e) => onUpdateConnector(index, 'power_kw', parseFloat(e.target.value) || 0)}
-                          className="h-9"
-                        />
-                      </div>
+            
+            <div className="col-span-2">
+              <Label htmlFor="name">Charge Point Name <span className="text-red-500">*</span></Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => onFieldChange('name', e.target.value)}
+                placeholder="Fast Charger 1"
+                data-testid="chargepoint-name-input"
+              />
+            </div>
+            
+            <div className="col-span-2">
+              <Label htmlFor="location_id">Location <span className="text-red-500">*</span></Label>
+              <Select value={formData.location_id} onValueChange={(value) => onFieldChange('location_id', value)}>
+                <SelectTrigger data-testid="location-select">
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* OEM & Model Selection */}
+          <div className="border-t pt-4">
+            <h3 className="text-sm font-semibold text-slate-900 mb-3">Charger Configuration</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="oem_id">Vendor (OEM) <span className="text-red-500">*</span></Label>
+                <Select value={formData.oem_id} onValueChange={onOEMChange}>
+                  <SelectTrigger data-testid="oem-select">
+                    <SelectValue placeholder="Select OEM" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {oems.map((oem) => (
+                      <SelectItem key={oem.id} value={oem.id}>
+                        {oem.oem_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="charger_model_id">Charger Model <span className="text-red-500">*</span></Label>
+                <Select 
+                  value={formData.charger_model_id} 
+                  onValueChange={(value) => onFieldChange('charger_model_id', value)}
+                  disabled={!formData.oem_id}
+                >
+                  <SelectTrigger data-testid="model-select">
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {chargerModels.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.model_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!formData.oem_id && (
+                  <p className="text-xs text-slate-500 mt-1">Select OEM first</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Auto-populated fields from Charger Model */}
+          {selectedModelDetails && (
+            <Alert className="bg-blue-50 border-blue-200">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-slate-700">
+                <strong>Auto-populated from {selectedModelDetails.model_name}:</strong>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-sm">
+                  <div>Protocol: <strong>{selectedModelDetails.protocol}</strong></div>
+                  <div>Type: <strong>{selectedModelDetails.charger_type}</strong></div>
+                  <div>Max Power: <strong>{selectedModelDetails.max_power_kw} kW</strong></div>
+                  <div>Max Voltage: <strong>{selectedModelDetails.max_voltage_v} V</strong></div>
+                  <div className="col-span-2">Connectors: <strong>{selectedModelDetails.connector_configs?.length || 0} configured</strong></div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Connectors from Model (Read-only display) */}
+          {selectedModelDetails && selectedModelDetails.connector_configs?.length > 0 && (
+            <div className="border-t pt-4">
+              <Label className="text-sm font-semibold">Connector Configuration (from model)</Label>
+              <div className="mt-2 space-y-2">
+                {selectedModelDetails.connector_configs.map((conn, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded border text-sm">
+                    <div className="flex gap-6">
+                      <span><strong>Connector {conn.connector_number}:</strong> {conn.connector_type}</span>
+                      <span>{conn.max_power_kw} kW</span>
+                      <span>{conn.max_voltage_v} V</span>
+                      <span>{conn.frequency_hz} Hz</span>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
+            </div>
+          )}
+
+          {/* Optional fields */}
+          <div className="border-t pt-4">
+            <h3 className="text-sm font-semibold text-slate-900 mb-3">Optional Details</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="serial_number">Serial Number</Label>
+                <Input
+                  id="serial_number"
+                  value={formData.serial_number}
+                  onChange={(e) => onFieldChange('serial_number', e.target.value)}
+                  placeholder="SN123456"
+                  data-testid="serial-input"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="firmware_version">Firmware Version</Label>
+                <Input
+                  id="firmware_version"
+                  value={formData.firmware_version}
+                  onChange={(e) => onFieldChange('firmware_version', e.target.value)}
+                  placeholder="1.2.3"
+                  data-testid="firmware-input"
+                />
+              </div>
+            </div>
           </div>
         </div>
         <DialogFooter>
@@ -210,7 +226,7 @@ const ChargePointFormDialog = ({
           <Button
             type="button"
             onClick={onSubmit}
-            disabled={!formData.charge_point_id || !formData.name || !formData.location_id || !formData.vendor || !formData.model}
+            disabled={!isFormValid()}
             data-testid="submit-chargepoint-btn"
           >
             {isEdit ? 'Update Charge Point' : 'Add Charge Point'}
@@ -225,6 +241,10 @@ const ChargePoints = () => {
   const { token } = useAuth();
   const [chargePoints, setChargePoints] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [oems, setOems] = useState([]);
+  const [allChargerModels, setAllChargerModels] = useState([]);
+  const [filteredChargerModels, setFilteredChargerModels] = useState([]);
+  const [selectedModelDetails, setSelectedModelDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
@@ -235,17 +255,27 @@ const ChargePoints = () => {
     charge_point_id: '',
     name: '',
     location_id: '',
-    vendor: '',
-    model: '',
+    oem_id: '',
+    charger_model_id: '',
     serial_number: '',
     firmware_version: '',
-    connectors: []
   });
 
   useEffect(() => {
     fetchLocations();
+    fetchOEMs();
+    fetchAllChargerModels();
     fetchChargePoints();
   }, []);
+
+  useEffect(() => {
+    if (formData.charger_model_id) {
+      const model = allChargerModels.find(m => m.id === formData.charger_model_id);
+      setSelectedModelDetails(model);
+    } else {
+      setSelectedModelDetails(null);
+    }
+  }, [formData.charger_model_id, allChargerModels]);
 
   const fetchLocations = async () => {
     try {
@@ -255,6 +285,28 @@ const ChargePoints = () => {
       setLocations(response.data);
     } catch (error) {
       console.error('Error fetching locations:', error);
+    }
+  };
+
+  const fetchOEMs = async () => {
+    try {
+      const response = await axios.get(`${API}/oems`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setOems(response.data);
+    } catch (error) {
+      console.error('Error fetching OEMs:', error);
+    }
+  };
+
+  const fetchAllChargerModels = async () => {
+    try {
+      const response = await axios.get(`${API}/charger-models`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAllChargerModels(response.data);
+    } catch (error) {
+      console.error('Error fetching charger models:', error);
     }
   };
 
@@ -293,57 +345,79 @@ const ChargePoints = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleOEMChange = (oemId) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      oem_id: oemId, 
+      charger_model_id: '',
+    }));
+    
+    // Filter models by selected OEM
+    const filtered = allChargerModels.filter(m => m.oem_id === oemId);
+    setFilteredChargerModels(filtered);
+    setSelectedModelDetails(null);
+  };
+
   const resetForm = () => {
     setFormData({
       charge_point_id: '',
       name: '',
       location_id: '',
-      vendor: '',
-      model: '',
+      oem_id: '',
+      charger_model_id: '',
       serial_number: '',
       firmware_version: '',
-      connectors: []
     });
-  };
-
-  const handleAddConnector = () => {
-    setFormData(prev => ({
-      ...prev,
-      connectors: [
-        ...prev.connectors,
-        { connector_id: prev.connectors.length + 1, connector_type: 'Type2', power_kw: 22, status: 'AVAILABLE' }
-      ]
-    }));
-  };
-
-  const handleRemoveConnector = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      connectors: prev.connectors.filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleUpdateConnector = (index, field, value) => {
-    setFormData(prev => {
-      const newConnectors = [...prev.connectors];
-      newConnectors[index] = { ...newConnectors[index], [field]: value };
-      return { ...prev, connectors: newConnectors };
-    });
+    setFilteredChargerModels([]);
+    setSelectedModelDetails(null);
   };
 
   const handleAddChargePoint = async () => {
+    if (!selectedModelDetails) {
+      toast.error('Validation failed', {
+        description: 'Please select a charger model',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+      return;
+    }
+
     try {
-      await axios.post(`${API}/charge-points`, formData, {
+      const payload = {
+        charge_point_id: formData.charge_point_id,
+        name: formData.name,
+        location_id: formData.location_id,
+        oem_id: formData.oem_id,
+        charger_model_id: formData.charger_model_id,
+        vendor: oems.find(o => o.id === formData.oem_id)?.oem_name || '',
+        model: selectedModelDetails.model_name,
+        serial_number: formData.serial_number || null,
+        firmware_version: formData.firmware_version || null,
+        protocol: selectedModelDetails.protocol,
+        connectors: selectedModelDetails.connector_configs.map(config => ({
+          connector_id: config.connector_number,
+          connector_type: config.connector_type,
+          power_kw: config.max_power_kw,
+          status: 'AVAILABLE'
+        }))
+      };
+
+      await axios.post(`${API}/charge-points`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      toast.success('Charge point added successfully!');
+      toast.success('Charge point added successfully', {
+        description: `${formData.name} has been added with ${payload.connectors.length} connectors`,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
       setIsAddDialogOpen(false);
       resetForm();
       fetchChargePoints(selectedLocation, searchQuery);
     } catch (error) {
       console.error('Error adding charge point:', error);
-      toast.error(error.response?.data?.detail || 'Failed to add charge point');
+      toast.error('Failed to add charge point', {
+        description: error.response?.data?.detail || 'An error occurred',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
     }
   };
 
@@ -354,30 +428,42 @@ const ChargePoints = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      toast.success('Charge point updated successfully!');
+      toast.success('Charge point updated successfully', {
+        description: `${formData.name} has been updated`,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
       setIsEditDialogOpen(false);
       setSelectedChargePoint(null);
       resetForm();
       fetchChargePoints(selectedLocation, searchQuery);
     } catch (error) {
       console.error('Error updating charge point:', error);
-      toast.error(error.response?.data?.detail || 'Failed to update charge point');
+      toast.error('Failed to update charge point', {
+        description: error.response?.data?.detail || 'An error occurred',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
     }
   };
 
-  const handleDeleteChargePoint = async (chargePointId) => {
-    if (!window.confirm('Are you sure you want to delete this charge point?')) return;
+  const handleDeleteChargePoint = async (chargePointId, cpName) => {
+    if (!window.confirm(`Are you sure you want to delete "${cpName}"? This action cannot be undone.`)) return;
 
     try {
       await axios.delete(`${API}/charge-points/${chargePointId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      toast.success('Charge point deleted successfully!');
+      toast.success('Charge point deleted successfully', {
+        description: `${cpName} has been removed`,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
       fetchChargePoints(selectedLocation, searchQuery);
     } catch (error) {
       console.error('Error deleting charge point:', error);
-      toast.error(error.response?.data?.detail || 'Failed to delete charge point');
+      toast.error('Failed to delete charge point', {
+        description: error.response?.data?.detail || 'An error occurred',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
     }
   };
 
@@ -387,11 +473,10 @@ const ChargePoints = () => {
       charge_point_id: cp.charge_point_id,
       name: cp.name,
       location_id: cp.location_id,
-      vendor: cp.vendor,
-      model: cp.model,
+      oem_id: cp.oem_id || '',
+      charger_model_id: cp.charger_model_id || '',
       serial_number: cp.serial_number || '',
       firmware_version: cp.firmware_version || '',
-      connectors: cp.connectors || []
     });
     setIsEditDialogOpen(true);
   };
@@ -531,7 +616,7 @@ const ChargePoints = () => {
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleDeleteChargePoint(cp.id)}
+                            onClick={() => handleDeleteChargePoint(cp.id, cp.name)}
                             className="text-red-600"
                             data-testid="delete-chargepoint-btn"
                           >
@@ -557,14 +642,15 @@ const ChargePoints = () => {
         }}
         onSubmit={handleAddChargePoint}
         title="Add Charge Point"
-        description="Create a new charge point with connectors"
+        description="Create a new charge point from a charger model"
         isEdit={false}
         formData={formData}
         onFieldChange={handleFieldChange}
         locations={locations}
-        onAddConnector={handleAddConnector}
-        onRemoveConnector={handleRemoveConnector}
-        onUpdateConnector={handleUpdateConnector}
+        oems={oems}
+        chargerModels={filteredChargerModels}
+        onOEMChange={handleOEMChange}
+        selectedModelDetails={selectedModelDetails}
       />
 
       <ChargePointFormDialog
@@ -576,14 +662,15 @@ const ChargePoints = () => {
         }}
         onSubmit={handleEditChargePoint}
         title="Edit Charge Point"
-        description="Update charge point details and connectors"
+        description="Update charge point details"
         isEdit={true}
         formData={formData}
         onFieldChange={handleFieldChange}
         locations={locations}
-        onAddConnector={handleAddConnector}
-        onRemoveConnector={handleRemoveConnector}
-        onUpdateConnector={handleUpdateConnector}
+        oems={oems}
+        chargerModels={filteredChargerModels}
+        onOEMChange={handleOEMChange}
+        selectedModelDetails={selectedModelDetails}
       />
     </div>
   );
