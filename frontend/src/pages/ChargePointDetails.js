@@ -103,6 +103,12 @@ const ChargePointDetails = () => {
 
   return (
     <div className="space-y-6" data-testid="chargepoint-details-page">
+      <Breadcrumb items={[
+        { label: 'Charging Network', href: null },
+        { label: 'Charge Points', href: '/charge-points' },
+        { label: chargePoint.charge_point_id, href: null }
+      ]} />
+      
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/charge-points')} data-testid="back-btn">
           <ArrowLeft className="h-5 w-5" />
