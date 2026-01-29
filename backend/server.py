@@ -731,30 +731,21 @@ class ChargePointCreate(BaseModel):
     charge_point_id: str
     name: str
     location_id: str
-    oem_id: Optional[str] = None
-    charger_model_id: Optional[str] = None
-    vendor: str
-    model: str
+    oem_id: str
+    charger_model_id: str
     serial_number: Optional[str] = None
     firmware_version: Optional[str] = None
     websocket_id: Optional[str] = None
-    protocol: str = "OCPP 1.6"
     go_live_date: Optional[datetime] = None
-    connectors: List[Connector] = []
+    connectors: List[Connector] = []  # Will be populated from model
 
 
 class ChargePointUpdate(BaseModel):
     name: Optional[str] = None
-    oem_id: Optional[str] = None
-    charger_model_id: Optional[str] = None
-    vendor: Optional[str] = None
-    model: Optional[str] = None
     serial_number: Optional[str] = None
-    firmware_version: Optional[str] = None
+    firmware_version_override: Optional[str] = None
     websocket_id: Optional[str] = None
-    protocol: Optional[str] = None
     go_live_date: Optional[datetime] = None
-    connectors: Optional[List[Connector]] = None
 
 
 class ChargePointResponse(BaseModel):
@@ -762,16 +753,19 @@ class ChargePointResponse(BaseModel):
     charge_point_id: str
     name: str
     location_id: str
-    oem_id: Optional[str] = None
-    charger_model_id: Optional[str] = None
-    vendor: str
-    model: str
+    oem_id: str
+    charger_model_id: str
+    vendor: str  # Derived from OEM
+    model: str  # Derived from ChargerModel
+    protocol: str  # Derived from ChargerModel
+    charger_type: str  # Derived from ChargerModel
+    max_power_kw: float  # Derived from ChargerModel
+    max_voltage_v: float  # Derived from ChargerModel
     serial_number: Optional[str] = None
-    firmware_version: Optional[str] = None
+    firmware_version: str  # From ChargerModel or override
     websocket_id: Optional[str] = None
-    protocol: str
     go_live_date: Optional[datetime] = None
-    connectors: List[Connector]
+    connectors: List[Connector]  # Derived from ChargerModel
     status: str
     is_online: bool
     last_heartbeat: Optional[datetime] = None
