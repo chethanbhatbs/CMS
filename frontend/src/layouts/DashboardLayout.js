@@ -3,18 +3,26 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard,
-  Network,
+  Users,
+  UsersRound,
   MapPin,
   Zap,
+  Receipt,
   Activity,
+  Pause,
+  PlayCircle,
+  FileText,
+  Bell,
+  Shield,
+  Building2,
+  UserCog,
   CreditCard,
   DollarSign,
-  Users,
   Package,
   Settings,
-  FileText,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   LogOut,
   User,
   Menu,
@@ -29,20 +37,162 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-  { icon: Network, label: 'Charging Network', path: '/charging-network' },
-  { icon: MapPin, label: 'Charging Locations', path: '/charging-locations' },
-  { icon: Zap, label: 'Charge Points', path: '/charge-points' },
-  { icon: Activity, label: 'Sessions', path: '/sessions' },
-  { icon: CreditCard, label: 'RFID Management', path: '/rfid-management' },
-  { icon: DollarSign, label: 'Tariff Management', path: '/tariff-management' },
-  { icon: Users, label: 'Accounts', path: '/accounts' },
-  { icon: Package, label: 'Asset Management', path: '/asset-management' },
-  { icon: Settings, label: 'Configuration', path: '/configuration' },
-  { icon: FileText, label: 'Reports & Logs', path: '/reports-logs' },
+const menuStructure = [
+  {
+    type: 'single',
+    icon: LayoutDashboard,
+    label: 'Dashboard',
+    path: '/dashboard',
+  },
+  {
+    type: 'section',
+    label: 'CRM',
+    items: [
+      { icon: Users, label: 'Retail Users', path: '/crm/retail-users' },
+      { icon: UsersRound, label: 'Group Users', path: '/crm/group-users' },
+    ],
+  },
+  {
+    type: 'section',
+    label: 'Charging Network',
+    items: [
+      { icon: MapPin, label: 'Charging Locations', path: '/charging-locations' },
+      { icon: Zap, label: 'Charge Points', path: '/charge-points' },
+    ],
+  },
+  {
+    type: 'section',
+    label: 'Operations',
+    items: [
+      { icon: Receipt, label: 'Charging Transactions', path: '/operations/transactions' },
+      { icon: Activity, label: 'Active Sessions', path: '/operations/active-sessions' },
+      { icon: Pause, label: 'On-Hold Transactions', path: '/operations/on-hold' },
+    ],
+  },
+  {
+    type: 'section',
+    label: 'Remote Operations',
+    items: [
+      { icon: PlayCircle, label: 'Start Remote Session', path: '/remote-operations/start-session' },
+    ],
+  },
+  {
+    type: 'section',
+    label: 'Monitoring',
+    items: [
+      { icon: FileText, label: 'Charger Logs', path: '/monitoring/charger-logs' },
+      { icon: Bell, label: 'Alarm Summary', path: '/monitoring/alarms' },
+      { icon: FileText, label: 'Reports & Logs', path: '/monitoring/reports' },
+    ],
+  },
+  {
+    type: 'section',
+    label: 'Administration',
+    items: [
+      { icon: Shield, label: 'Admin User Management', path: '/admin/users' },
+      { icon: Building2, label: 'Franchise Management', path: '/admin/franchises' },
+      { icon: UserCog, label: 'Role Management', path: '/admin/roles' },
+      { icon: CreditCard, label: 'RFID Management', path: '/admin/rfid' },
+      { icon: DollarSign, label: 'Tariff Management', path: '/admin/tariffs' },
+      { icon: Package, label: 'Asset Management', path: '/admin/assets' },
+      { icon: Settings, label: 'Configuration', path: '/admin/configuration' },
+    ],
+  },
 ];
+
+const SidebarContent = ({ collapsed, onNavigate }) => {
+  const location = useLocation();
+  const [openSections, setOpenSections] = useState(
+    menuStructure.reduce((acc, item) => {
+      if (item.type === 'section') {
+        acc[item.label] = true;
+      }
+      return acc;
+    }, {})
+  );
+
+  const toggleSection = (label) => {
+    setOpenSections((prev) => ({ ...prev, [label]: !prev[label] }));
+  };
+
+  return (
+    <nav className="flex-1 overflow-y-auto py-4">
+      <ul className="space-y-1 px-2">
+        {menuStructure.map((item, index) => {
+          if (item.type === 'single') {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  onClick={onNavigate}
+                  data-testid={`nav-link-${item.path.slice(1)}`}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${
+                    isActive
+                      ? 'bg-primary text-white shadow-md'
+                      : 'hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <Icon size={20} />
+                  {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+                </Link>
+              </li>
+            );
+          }
+
+          if (item.type === 'section') {
+            return (
+              <li key={item.label}>
+                <Collapsible
+                  open={openSections[item.label]}
+                  onOpenChange={() => toggleSection(item.label)}
+                >
+                  {!collapsed && (
+                    <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider hover:text-slate-200 transition-colors">
+                      <span>{item.label}</span>
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${
+                          openSections[item.label] ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </CollapsibleTrigger>
+                  )}
+                  <CollapsibleContent className="space-y-1 mt-1">
+                    {item.items.map((subItem) => {
+                      const SubIcon = subItem.icon;
+                      const isActive = location.pathname === subItem.path;
+                      return (
+                        <Link
+                          key={subItem.path}
+                          to={subItem.path}
+                          onClick={onNavigate}
+                          data-testid={`nav-link-${subItem.path.slice(1).replace(/\//g, '-')}`}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${
+                            isActive
+                              ? 'bg-primary text-white shadow-md'
+                              : 'hover:bg-slate-800 hover:text-white'
+                          } ${!collapsed && 'ml-2'}`}
+                        >
+                          <SubIcon size={20} />
+                          {!collapsed && <span className="text-sm font-medium">{subItem.label}</span>}
+                        </Link>
+                      );
+                    })}
+                  </CollapsibleContent>
+                </Collapsible>
+              </li>
+            );
+          }
+
+          return null;
+        })}
+      </ul>
+    </nav>
+  );
+};
 
 const DashboardLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -63,6 +213,19 @@ const DashboardLayout = () => {
       .join('')
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  const getPageTitle = () => {
+    for (const item of menuStructure) {
+      if (item.type === 'single' && item.path === location.pathname) {
+        return item.label;
+      }
+      if (item.type === 'section') {
+        const found = item.items.find((subItem) => subItem.path === location.pathname);
+        if (found) return found.label;
+      }
+    }
+    return 'Dashboard';
   };
 
   return (
@@ -93,30 +256,7 @@ const DashboardLayout = () => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4">
-          <ul className="space-y-1 px-2">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    data-testid={`nav-link-${item.path.slice(1)}`}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${
-                      isActive
-                        ? 'bg-primary text-white shadow-md'
-                        : 'hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <Icon size={20} />
-                    {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+        <SidebarContent collapsed={collapsed} onNavigate={() => {}} />
       </aside>
 
       {/* Sidebar - Mobile */}
@@ -141,30 +281,7 @@ const DashboardLayout = () => {
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-4">
-              <ul className="space-y-1 px-2">
-                {menuItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = location.pathname === item.path;
-                  return (
-                    <li key={item.path}>
-                      <Link
-                        to={item.path}
-                        onClick={() => setMobileOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${
-                          isActive
-                            ? 'bg-primary text-white shadow-md'
-                            : 'hover:bg-slate-800 hover:text-white'
-                        }`}
-                      >
-                        <Icon size={20} />
-                        <span className="text-sm font-medium">{item.label}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </nav>
+            <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
           </aside>
         </div>
       )}
@@ -184,7 +301,7 @@ const DashboardLayout = () => {
               <Menu size={24} />
             </Button>
             <h2 className="text-lg font-heading font-semibold text-slate-900" data-testid="page-title">
-              {menuItems.find((item) => item.path === location.pathname)?.label || 'Dashboard'}
+              {getPageTitle()}
             </h2>
           </div>
 
