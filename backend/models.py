@@ -183,13 +183,21 @@ class ChargePoint(BaseModel):
     charge_point_id: str  # OCPP Identity
     name: str
     location_id: str
+    oem_id: Optional[str] = None  # Reference to OEM
+    charger_model_id: Optional[str] = None  # Reference to ChargerModel
     vendor: str
     model: str
+    serial_number: Optional[str] = None
     firmware_version: Optional[str] = None
+    websocket_id: Optional[str] = None  # OCPP WebSocket connection ID
+    protocol: str = "OCPP 1.6"  # OCPP version
+    go_live_date: Optional[datetime] = None
     connectors: List[Connector] = []
     status: ChargePointStatus = ChargePointStatus.AVAILABLE
     is_online: bool = False
     last_heartbeat: Optional[datetime] = None
+    total_energy_kwh: float = 0.0  # Total energy consumed
+    total_sessions: int = 0  # Total number of sessions
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
