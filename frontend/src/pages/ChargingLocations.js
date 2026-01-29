@@ -607,7 +607,15 @@ const ChargingLocations = () => {
               <TableBody>
                 {paginatedLocations.map((location) => (
                   <TableRow key={location.id} data-testid={`location-row-${location.id}`}>
-                    <TableCell className="font-medium">{location.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        to={`/charging-locations/${location.id}`}
+                        className="text-primary hover:underline"
+                        data-testid={`location-link-${location.id}`}
+                      >
+                        {location.name}
+                      </Link>
+                    </TableCell>
                     <TableCell className="text-sm text-slate-600 max-w-xs truncate">{location.address}</TableCell>
                     <TableCell>{location.city}</TableCell>
                     <TableCell>{location.state}</TableCell>
