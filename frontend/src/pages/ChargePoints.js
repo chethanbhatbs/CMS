@@ -326,7 +326,10 @@ const ChargePoints = () => {
   const fetchChargePoints = async (locationId = '', search = '') => {
     try {
       setLoading(true);
-      const params = {};
+      const params = {
+        skip: (currentPage - 1) * itemsPerPage,
+        limit: itemsPerPage
+      };
       if (locationId) params.location_id = locationId;
       if (search) params.search = search;
       
@@ -335,6 +338,7 @@ const ChargePoints = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setChargePoints(response.data);
+      setTotalItems(response.data.length);
     } catch (error) {
       console.error('Error fetching charge points:', error);
       toast.error('Failed to fetch charge points');
