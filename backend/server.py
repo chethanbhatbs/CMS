@@ -1456,6 +1456,177 @@ async def get_tariff_assignments(
     assignments = await db.tariff_assignments.find(query, {"_id": 0}).to_list(100)
     return assignments
 
+
+# ============================================
+# ROLE MANAGEMENT ENDPOINTS (SUPER_ADMIN only)
+# ============================================
+
+def require_super_admin(current_user: UserResponse = Depends(get_current_user)):
+    """Dependency to restrict access to SUPER_ADMIN only"""
+    if current_user.role != "SUPER_ADMIN":
+        raise HTTPException(status_code=403, detail="Access denied. SUPER_ADMIN role required")
+    return current_user
+
+
+class RoleCreate(BaseModel):
+    role_name: str
+    description: str
+    permissions: Dict[str, Dict[str, bool]]
+
+
+class RoleResponse(BaseModel):
+    id: str
+    role_name: str
+    description: str
+    permissions: Dict[str, Dict[str, bool]]
+    user_count: int
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+@api_router.get("/roles", response_model=List[RoleResponse])
+async def get_roles(
+    current_user: UserResponse = Depends(require_super_admin)
+):
+    """Get all roles (SUPER_ADMIN only)"""
+    from models import RolePermission
+    
+    roles = await db.roles.find({"status": "ACTIVE"}, {"_id": 0}).to_list(100)
+    
+    for role in roles:
+        if isinstance(role.get("created_at"), str):
+            role["created_at"] = datetime.fromisoformat(role["created_at"])
+        if isinstance(role.get("updated_at"), str):
+            role["updated_at"] = datetime.fromisoformat(role["updated_at"])
+    
+    return roles
+
+
+@api_router.post("/roles", response_model=RoleResponse)
+async def create_role(
+    role_data: RoleCreate,
+    current_user: UserResponse = Depends(require_super_admin)
+):
+    """Create a new role (SUPER_ADMIN only)"""
+    from models import RolePermission
+    
+    role = RolePermission(**role_data.model_dump())
+    
+    role_dict = role.model_dump()
+    role_dict['created_at'] = role_dict['created_at'].isoformat()
+    role_dict['updated_at'] = role_dict['updated_at'].isoformat()
+    await db.roles.insert_one(role_dict)
+    
+    return RoleResponse(**role.model_dump())
+
+
+@api_router.put("/roles/{role_id}", response_model=RoleResponse)
+async def update_role(
+    role_id: str,
+    role_data: RoleCreate,
+    current_user: UserResponse = Depends(require_super_admin)
+):
+    """Update a role (SUPER_ADMIN only)"""
+    existing = await db.roles.find_one({"id": role_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    update_data = role_data.model_dump()
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.roles.update_one({"id": role_id}, {"$set": update_data})
+    
+    updated = await db.roles.find_one({"id": role_id}, {"_id": 0})
+    if isinstance(updated.get("created_at"), str):
+        updated["created_at"] = datetime.fromisoformat(updated["created_at"])
+    if isinstance(updated.get("updated_at"), str):
+        updated["updated_at"] = datetime.fromisoformat(updated["updated_at"])
+    
+    return updated
+
+
+# User Invitation APIs
+class UserInviteRequest(BaseModel):
+    email: EmailStr
+    full_name: str
+    phone: Optional[str] = None
+    role: str
+
+
+@api_router.post("/users/invite")
+async def invite_user(
+    invite_data: UserInviteRequest,
+    current_user: UserResponse = Depends(require_super_admin)
+):
+    """Invite a new user (SUPER_ADMIN only)"""
+    # Check if user already exists
+    existing = await db.users.find_one({"email": invite_data.email}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="User already exists")
+    
+    # Generate invitation token
+    invitation_token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+    
+    from models import UserInvitation
+    invitation = UserInvitation(
+        email=invite_data.email,
+        full_name=invite_data.full_name,
+        phone=invite_data.phone,
+        role=invite_data.role,
+        invitation_token=invitation_token,
+        expires_at=expires_at
+    )
+    
+    invitation_dict = invitation.model_dump()
+    invitation_dict['created_at'] = invitation_dict['created_at'].isoformat()
+    invitation_dict['expires_at'] = invitation_dict['expires_at'].isoformat()
+    await db.user_invitations.insert_one(invitation_dict)
+    
+    # In production, send email with activation link
+    activation_link = f"/activate?token={invitation_token}"
+    
+    return {
+        "message": "User invited successfully",
+        "activation_link": activation_link,
+        "expires_in_hours": 24
+    }
+
+
+@api_router.get("/users/list")
+async def list_users(
+    current_user: UserResponse = Depends(require_super_admin)
+):
+    """List all users with status (SUPER_ADMIN only)"""
+    users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(100)
+    
+    for user in users:
+        if isinstance(user.get("created_at"), str):
+            user["created_at"] = datetime.fromisoformat(user["created_at"])
+        if isinstance(user.get("last_login"), str):
+            user["last_login"] = datetime.fromisoformat(user["last_login"])
+    
+    return users
+
+
+@api_router.patch("/users/{user_id}/status")
+async def update_user_status(
+    user_id: str,
+    is_active: bool,
+    current_user: UserResponse = Depends(require_super_admin)
+):
+    """Update user active status (SUPER_ADMIN only)"""
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"is_active": is_active, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": f"User {'activated' if is_active else 'deactivated'} successfully"}
+
 # Include the router in the main app
 app.include_router(api_router)
 app.include_router(ocpp_router)  # Add OCPP WebSocket router
