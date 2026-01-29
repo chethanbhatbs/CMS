@@ -414,6 +414,8 @@ class ChargerModel(BaseModel):
     charger_type: ChargerType = ChargerType.DC
     max_power_kw: float
     max_voltage_v: float
+    serial_number_pattern: Optional[str] = None  # Serial number format/pattern
+    default_firmware_version: Optional[str] = None  # Default firmware version
     connector_configs: List[ConnectorConfig] = []  # Max 4 connectors
     image_url: Optional[str] = None
     status: str = "ACTIVE"
