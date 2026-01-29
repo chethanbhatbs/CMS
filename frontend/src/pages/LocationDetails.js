@@ -100,7 +100,6 @@ const LocationDetails = () => {
   return (
     <div className="space-y-6" data-testid="location-details-page">
       <Breadcrumb items={[
-        { label: 'Charging Network', href: null },
         { label: 'Charging Locations', href: '/charging-locations' },
         { label: location.name, href: null }
       ]} />
