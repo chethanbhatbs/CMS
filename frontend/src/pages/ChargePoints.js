@@ -392,10 +392,11 @@ const ChargePoints = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={onClose} data-testid="cancel-chargepoint-btn">
+            <Button type="button" variant="outline" onClick={onClose} data-testid="cancel-chargepoint-btn">
               Cancel
             </Button>
             <Button
+              type="button"
               onClick={onSubmit}
               disabled={!formData.charge_point_id || !formData.name || !formData.location_id || !formData.vendor || !formData.model}
               data-testid="submit-chargepoint-btn"
