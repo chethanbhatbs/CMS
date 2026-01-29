@@ -672,6 +672,56 @@ async def get_charger_model(
     return model
 
 
+@api_router.put("/charger-models/{model_id}", response_model=ChargerModelResponse)
+async def update_charger_model(
+    model_id: str,
+    model_data: ChargerModelCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update an existing charger model"""
+    existing_model = await db.charger_models.find_one({"id": model_id}, {"_id": 0})
+    
+    if not existing_model:
+        raise HTTPException(status_code=404, detail="Charger model not found")
+    
+    if len(model_data.connector_configs) > 4:
+        raise HTTPException(status_code=400, detail="Maximum 4 connectors allowed per charger model")
+    
+    update_data = model_data.model_dump()
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.charger_models.update_one(
+        {"id": model_id},
+        {"$set": update_data}
+    )
+    
+    updated_model = await db.charger_models.find_one({"id": model_id}, {"_id": 0})
+    
+    if isinstance(updated_model.get("created_at"), str):
+        updated_model["created_at"] = datetime.fromisoformat(updated_model["created_at"])
+    if isinstance(updated_model.get("updated_at"), str):
+        updated_model["updated_at"] = datetime.fromisoformat(updated_model["updated_at"])
+    
+    return updated_model
+
+
+@api_router.delete("/charger-models/{model_id}")
+async def delete_charger_model(
+    model_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Delete (soft delete) a charger model"""
+    result = await db.charger_models.update_one(
+        {"id": model_id},
+        {"$set": {"status": "INACTIVE", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Charger model not found")
+    
+    return {"message": "Charger model deleted successfully"}
+
+
 # ============================================
 # CHARGE POINTS ENDPOINTS
 # ============================================
