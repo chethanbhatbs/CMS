@@ -1,0 +1,149 @@
+{
+  "project_name": "EV Charging Management System (CMS)",
+  "design_philosophy": {
+    "theme": "Light Mode Focus (Utility Swiss)",
+    "core_principles": [
+      "Clarity over Decoration",
+      "High Density Data",
+      "Optical Alignment",
+      "Systematic Spacing"
+    ],
+    "emotional_tone": "Professional, Reliable, Efficient"
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Manrope, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "installation": "Execute: yarn add @fontsource/manrope @fontsource/inter @fontsource/jetbrains-mono",
+    "scale": {
+      "h1": "text-3xl font-bold tracking-tight text-slate-900",
+      "h2": "text-2xl font-semibold tracking-tight text-slate-900",
+      "h3": "text-xl font-semibold tracking-tight text-slate-900",
+      "body": "text-sm leading-relaxed text-slate-600",
+      "caption": "text-xs font-medium text-slate-500 uppercase tracking-wider"
+    }
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "DEFAULT": "#4f46e5",
+        "foreground": "#ffffff",
+        "hover": "#4338ca",
+        "active": "#3730a3"
+      },
+      "background": {
+        "DEFAULT": "#ffffff",
+        "secondary": "#f8fafc",
+        "subtle": "#f1f5f9"
+      },
+      "surface": {
+        "card": "#ffffff",
+        "border": "#e2e8f0",
+        "input": "#e2e8f0"
+      },
+      "text": {
+        "main": "#0f172a",
+        "muted": "#64748b",
+        "subtle": "#94a3b8"
+      },
+      "status": {
+        "success": "#10b981",
+        "warning": "#f59e0b",
+        "error": "#ef4444",
+        "info": "#3b82f6"
+      }
+    },
+    "gradients": {
+      "subtle_fade": "bg-gradient-to-b from-white to-slate-50",
+      "login_overlay": "bg-white/80 backdrop-blur-md"
+    }
+  },
+  "layout_structure": {
+    "sidebar": {
+      "width": "w-64",
+      "collapsed_width": "w-16",
+      "bg": "bg-slate-900",
+      "text": "text-slate-300",
+      "active_item": "bg-indigo-600 text-white shadow-md",
+      "hover_item": "hover:bg-slate-800 hover:text-white"
+    },
+    "topbar": {
+      "height": "h-16",
+      "bg": "bg-white",
+      "border": "border-b border-slate-200",
+      "shadow": "shadow-sm"
+    },
+    "main_content": {
+      "bg": "bg-slate-50",
+      "padding": "p-8",
+      "max_width": "max-w-7xl mx-auto"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all duration-200",
+      "secondary": "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 shadow-sm",
+      "ghost": "hover:bg-slate-100 text-slate-600 hover:text-slate-900"
+    },
+    "cards": {
+      "base": "bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200",
+      "header": "px-6 py-4 border-b border-slate-100 flex items-center justify-between",
+      "body": "p-6"
+    },
+    "inputs": {
+      "base": "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+    }
+  },
+  "images": {
+    "login_bg": {
+      "url": "https://images.unsplash.com/photo-1707059464734-9a6b4028891f?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "description": "Minimal abstract white texture for login background",
+      "usage": "Login Page Background"
+    },
+    "login_sidebar_image": {
+      "url": "https://images.unsplash.com/photo-1763543029709-bb81b7dfc9ad?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "description": "Minimal electric car charger on concrete wall",
+      "usage": "Login Page Side Panel"
+    }
+  },
+  "icon_libraries": {
+    "primary": "lucide-react",
+    "secondary": "@radix-ui/react-icons"
+  },
+  "animations": {
+    "micro_interactions": {
+      "hover_lift": "hover:-translate-y-0.5 transition-transform duration-200",
+      "click_scale": "active:scale-95 transition-transform duration-100"
+    },
+    "page_transitions": {
+      "fade_in": "animate-in fade-in duration-300",
+      "slide_up": "animate-in slide-in-from-bottom-4 duration-500 fade-in"
+    }
+  },
+  "universal_guidelines": [
+    "NEVER use generic gradients for the whole background.",
+    "Use 'Inter' for all body text to ensure maximum readability for data.",
+    "Use 'Manrope' for headings to give a modern tech feel.",
+    "Always add 'data-testid' to interactive elements.",
+    "Buttons should have specific distinct styles: Primary (Indigo), Secondary (White/Border), Destructive (Red).",
+    "Sidebar should have a collapsible state for better screen real estate.",
+    "Ensure high contrast for all text elements (WCAG AA compliant).",
+    "Input fields must have clearly defined focus states with a ring.",
+    "Use 'sonner' for all toast notifications.",
+    "For tables, use a clean layout with sticky headers and distinct row hover states."
+  ],
+  "instructions_to_main_agent": {
+    "setup": [
+      "Install required fonts: yarn add @fontsource/manrope @fontsource/inter @fontsource/jetbrains-mono",
+      "Ensure tailwind.config.js extends the theme with new colors and fonts.",
+      "Create a 'Layout' component that handles the Sidebar and Topbar structure."
+    ],
+    "file_structure": [
+      "Keep pages in 'src/pages'",
+      "Keep reusable components in 'src/components'",
+      "Use 'src/layouts' for DashboardLayout and AuthLayout"
+    ]
+  }
+}
