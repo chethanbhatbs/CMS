@@ -577,7 +577,7 @@ const ChargingLocations = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {locations.map((location) => (
+                {paginatedLocations.map((location) => (
                   <TableRow key={location.id} data-testid={`location-row-${location.id}`}>
                     <TableCell className="font-medium">{location.name}</TableCell>
                     <TableCell className="text-sm text-slate-600 max-w-xs truncate">{location.address}</TableCell>
