@@ -191,105 +191,105 @@ const ChargingLocations = () => {
 
   const LocationDialog = ({ isOpen, onClose, onSubmit, title, description }) => (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className=\"max-w-2xl\">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div className=\"grid grid-cols-2 gap-4 py-4\">
-          <div className=\"col-span-2\">
-            <Label htmlFor=\"name\">Location Name *</Label>
+        <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="col-span-2">
+            <Label htmlFor="name">Location Name *</Label>
             <Input
-              id=\"name\"
+              id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder=\"Downtown Charging Hub\"
-              data-testid=\"location-name-input\"
+              placeholder="Downtown Charging Hub"
+              data-testid="location-name-input"
             />
           </div>
-          <div className=\"col-span-2\">
-            <Label htmlFor=\"address\">Address *</Label>
+          <div className="col-span-2">
+            <Label htmlFor="address">Address *</Label>
             <Input
-              id=\"address\"
+              id="address"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              placeholder=\"123 Main Street\"
-              data-testid=\"location-address-input\"
+              placeholder="123 Main Street"
+              data-testid="location-address-input"
             />
           </div>
           <div>
-            <Label htmlFor=\"city\">City *</Label>
+            <Label htmlFor="city">City *</Label>
             <Input
-              id=\"city\"
+              id="city"
               value={formData.city}
               onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              placeholder=\"San Francisco\"
-              data-testid=\"location-city-input\"
+              placeholder="San Francisco"
+              data-testid="location-city-input"
             />
           </div>
           <div>
-            <Label htmlFor=\"state\">State *</Label>
+            <Label htmlFor="state">State *</Label>
             <Input
-              id=\"state\"
+              id="state"
               value={formData.state}
               onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-              placeholder=\"CA\"
-              data-testid=\"location-state-input\"
+              placeholder="CA"
+              data-testid="location-state-input"
             />
           </div>
           <div>
-            <Label htmlFor=\"postal_code\">Postal Code *</Label>
+            <Label htmlFor="postal_code">Postal Code *</Label>
             <Input
-              id=\"postal_code\"
+              id="postal_code"
               value={formData.postal_code}
               onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-              placeholder=\"94102\"
-              data-testid=\"location-postal-input\"
+              placeholder="94102"
+              data-testid="location-postal-input"
             />
           </div>
           <div>
-            <Label htmlFor=\"country\">Country *</Label>
+            <Label htmlFor="country">Country *</Label>
             <Input
-              id=\"country\"
+              id="country"
               value={formData.country}
               onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-              placeholder=\"USA\"
-              data-testid=\"location-country-input\"
+              placeholder="USA"
+              data-testid="location-country-input"
             />
           </div>
           <div>
-            <Label htmlFor=\"latitude\">Latitude</Label>
+            <Label htmlFor="latitude">Latitude</Label>
             <Input
-              id=\"latitude\"
-              type=\"number\"
-              step=\"any\"
+              id="latitude"
+              type="number"
+              step="any"
               value={formData.latitude}
               onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-              placeholder=\"37.7749\"
-              data-testid=\"location-latitude-input\"
+              placeholder="37.7749"
+              data-testid="location-latitude-input"
             />
           </div>
           <div>
-            <Label htmlFor=\"longitude\">Longitude</Label>
+            <Label htmlFor="longitude">Longitude</Label>
             <Input
-              id=\"longitude\"
-              type=\"number\"
-              step=\"any\"
+              id="longitude"
+              type="number"
+              step="any"
               value={formData.longitude}
               onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-              placeholder=\"-122.4194\"
-              data-testid=\"location-longitude-input\"
+              placeholder="-122.4194"
+              data-testid="location-longitude-input"
             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant=\"outline\" onClick={onClose} data-testid=\"cancel-location-btn\">
+          <Button variant="outline" onClick={onClose} data-testid="cancel-location-btn">
             Cancel
           </Button>
           <Button
             onClick={onSubmit}
             disabled={!formData.name || !formData.address || !formData.city || !formData.state || !formData.postal_code || !formData.country}
-            data-testid=\"submit-location-btn\"
+            data-testid="submit-location-btn"
           >
             {title === 'Add Location' ? 'Add Location' : 'Update Location'}
           </Button>
