@@ -190,7 +190,7 @@ class ChargePoint(BaseModel):
     firmware_version_override: Optional[str] = None  # Override model's default firmware
     websocket_id: Optional[str] = None  # OCPP WebSocket connection ID
     go_live_date: Optional[datetime] = None
-    status: ChargePointStatus = ChargePointStatus.UNAVAILABLE  # Default UNAVAILABLE until first StatusNotification
+    status: ChargePointStatus = ChargePointStatus.UNAVAILABLE  # Default UNKNOWN until first StatusNotification
     is_online: bool = False
     last_heartbeat: Optional[datetime] = None
     total_energy_kwh: float = 0.0  # Total energy consumed
