@@ -34,6 +34,7 @@ async def ocpp_websocket_endpoint(websocket: WebSocket, cp_id: str):
     finally:
         # Cleanup
         registry.remove(cp_id)
+        logger.info(f"CP {cp_id} cleanup started")
         
         # Update database
         from motor.motor_asyncio import AsyncIOMotorClient
@@ -44,8 +45,35 @@ async def ocpp_websocket_endpoint(websocket: WebSocket, cp_id: str):
         client = AsyncIOMotorClient(mongo_url)
         db = client[os.environ.get('DB_NAME', 'test_database')]
         
+        # Mark CP as offline
         await db.charge_points.update_one(
             {"charge_point_id": cp_id},
             {"$set": {"is_online": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
+        
+        # Mark any active sessions as FAILED
+        result = await db.charging_sessions.update_many(
+            {"charge_point_id": cp_id, "status": "ACTIVE"},
+            {"$set": {
+                "status": "FAILED",
+                "stop_reason": "Connection lost",
+                "end_time": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        if result.modified_count > 0:
+            logger.warning(f"Marked {result.modified_count} active sessions as FAILED for {cp_id}")
+        
+        # Log disconnect
+        await db.charger_logs.insert_one({
+            "charge_point_id": cp_id,
+            "log_level": "WARNING",
+            "message": "Charge point disconnected",
+            "action": "Disconnect",
+            "metadata": {"active_sessions_failed": result.modified_count},
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
         client.close()
+        logger.info(f"CP {cp_id} cleanup completed")
