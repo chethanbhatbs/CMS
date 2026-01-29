@@ -217,6 +217,18 @@ const ChargePointFormDialog = ({
                   data-testid="firmware-input"
                 />
               </div>
+
+              <div>
+                <Label htmlFor="go_live_date">Go-Live Date</Label>
+                <Input
+                  id="go_live_date"
+                  type="date"
+                  value={formData.go_live_date || ''}
+                  onChange={(e) => onFieldChange('go_live_date', e.target.value)}
+                  data-testid="golive-date-input"
+                />
+                <p className="text-xs text-slate-500 mt-1">Date when charge point went live</p>
+              </div>
             </div>
           </div>
         </div>
