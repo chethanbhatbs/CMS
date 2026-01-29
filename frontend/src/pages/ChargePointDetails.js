@@ -90,7 +90,15 @@ const ChargePointDetails = () => {
   }
 
   if (!chargePoint) {
-    return (\n      <div className=\"text-center py-12\">\n        <p className=\"text-slate-600\">Charge point not found</p>\n        <Button onClick={() => navigate('/charge-points')} className=\"mt-4\">\n          Back to Charge Points\n        </Button>\n      </div>\n    );\n  }
+    return (
+      <div className="text-center py-12">
+        <p className="text-slate-600">Charge point not found</p>
+        <Button onClick={() => navigate('/charge-points')} className="mt-4">
+          Back to Charge Points
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className=\"space-y-6\" data-testid=\"chargepoint-details-page\">
