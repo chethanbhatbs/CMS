@@ -269,6 +269,210 @@ async def reset_password(request: ResetPasswordRequest):
     
     return {"message": "Password reset successful"}
 
+
+# ============================================
+# CHARGING LOCATIONS ENDPOINTS
+# ============================================
+
+class ChargingLocationCreate(BaseModel):
+    name: str
+    address: str
+    city: str
+    state: str
+    postal_code: str
+    country: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    franchise_id: Optional[str] = None
+
+
+class ChargingLocationUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    franchise_id: Optional[str] = None
+
+
+class ChargingLocationResponse(BaseModel):
+    id: str
+    name: str
+    address: str
+    city: str
+    state: str
+    postal_code: str
+    country: str
+    latitude: Optional[float]
+    longitude: Optional[float]
+    franchise_id: Optional[str]
+    total_charge_points: int
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+@api_router.get("/locations", response_model=List[ChargingLocationResponse])
+async def get_locations(
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get all charging locations with optional search and filters"""
+    query = {}
+    
+    # Add search filter
+    if search:
+        query["$or"] = [
+            {"name": {"$regex": search, "$options": "i"}},
+            {"city": {"$regex": search, "$options": "i"}},
+            {"address": {"$regex": search, "$options": "i"}}
+        ]
+    
+    # Add status filter
+    if status:
+        query["status"] = status
+    
+    locations = await db.charging_locations.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+    
+    # Convert ISO strings back to datetime
+    for location in locations:
+        if isinstance(location.get("created_at"), str):
+            location["created_at"] = datetime.fromisoformat(location["created_at"])
+        if isinstance(location.get("updated_at"), str):
+            location["updated_at"] = datetime.fromisoformat(location["updated_at"])
+    
+    return locations
+
+
+@api_router.get("/locations/{location_id}", response_model=ChargingLocationResponse)
+async def get_location(
+    location_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get a specific charging location by ID"""
+    location = await db.charging_locations.find_one({"id": location_id}, {"_id": 0})
+    
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    # Convert ISO strings back to datetime
+    if isinstance(location.get("created_at"), str):
+        location["created_at"] = datetime.fromisoformat(location["created_at"])
+    if isinstance(location.get("updated_at"), str):
+        location["updated_at"] = datetime.fromisoformat(location["updated_at"])
+    
+    return location
+
+
+@api_router.post("/locations", response_model=ChargingLocationResponse)
+async def create_location(
+    location_data: ChargingLocationCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Create a new charging location"""
+    # Create location object
+    location = ChargingLocation(
+        name=location_data.name,
+        address=location_data.address,
+        city=location_data.city,
+        state=location_data.state,
+        postal_code=location_data.postal_code,
+        country=location_data.country,
+        latitude=location_data.latitude,
+        longitude=location_data.longitude,
+        franchise_id=location_data.franchise_id
+    )
+    
+    # Store in database
+    location_dict = location.model_dump()
+    location_dict['created_at'] = location_dict['created_at'].isoformat()
+    location_dict['updated_at'] = location_dict['updated_at'].isoformat()
+    await db.charging_locations.insert_one(location_dict)
+    
+    return ChargingLocationResponse(**location.model_dump())
+
+
+@api_router.put("/locations/{location_id}", response_model=ChargingLocationResponse)
+async def update_location(
+    location_id: str,
+    location_data: ChargingLocationUpdate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update an existing charging location"""
+    # Find existing location
+    existing_location = await db.charging_locations.find_one({"id": location_id}, {"_id": 0})
+    
+    if not existing_location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    # Prepare update data
+    update_data = {k: v for k, v in location_data.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Update location
+    await db.charging_locations.update_one(
+        {"id": location_id},
+        {"$set": update_data}
+    )
+    
+    # Get updated location
+    updated_location = await db.charging_locations.find_one({"id": location_id}, {"_id": 0})
+    
+    # Convert ISO strings back to datetime
+    if isinstance(updated_location.get("created_at"), str):
+        updated_location["created_at"] = datetime.fromisoformat(updated_location["created_at"])
+    if isinstance(updated_location.get("updated_at"), str):
+        updated_location["updated_at"] = datetime.fromisoformat(updated_location["updated_at"])
+    
+    return updated_location
+
+
+@api_router.patch("/locations/{location_id}/status")
+async def update_location_status(
+    location_id: str,
+    status: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update location status (enable/disable)"""
+    # Validate status
+    if status not in ["ACTIVE", "INACTIVE"]:
+        raise HTTPException(status_code=400, detail="Invalid status. Must be ACTIVE or INACTIVE")
+    
+    # Update status
+    result = await db.charging_locations.update_one(
+        {"id": location_id},
+        {"$set": {"status": status, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    return {"message": f"Location status updated to {status}"}
+
+
+@api_router.delete("/locations/{location_id}")
+async def delete_location(
+    location_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Delete (soft delete) a charging location"""
+    # Soft delete by setting status to INACTIVE
+    result = await db.charging_locations.update_one(
+        {"id": location_id},
+        {"$set": {"status": "INACTIVE", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    return {"message": "Location deleted successfully"}
+
 # Include the router in the main app
 app.include_router(api_router)
 
