@@ -398,10 +398,6 @@ class OEM(BaseModel):
     oem_name: str
     website: Optional[str] = None
     support_email: Optional[EmailStr] = None
-    protocol: str = "OCPP 1.6"  # OCPP 1.6, OCPP 2.0.1
-    charger_type: ChargerType = ChargerType.DC
-    max_power_kw: float
-    max_voltage_v: float
     status: str = "ACTIVE"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
