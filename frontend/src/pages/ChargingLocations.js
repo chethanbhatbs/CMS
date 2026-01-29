@@ -34,6 +34,114 @@ import { useAuth } from '@/contexts/AuthContext';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+const LocationFormDialog = ({ isOpen, onClose, onSubmit, title, description, formData, onFieldChange }) => {
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl" onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="col-span-2">
+            <Label htmlFor="name">Location Name *</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => onFieldChange('name', e.target.value)}
+              placeholder="Downtown Charging Hub"
+              data-testid="location-name-input"
+            />
+          </div>
+          <div className="col-span-2">
+            <Label htmlFor="address">Address *</Label>
+            <Input
+              id="address"
+              value={formData.address}
+              onChange={(e) => onFieldChange('address', e.target.value)}
+              placeholder="123 Main Street"
+              data-testid="location-address-input"
+            />
+          </div>
+          <div>
+            <Label htmlFor="city">City *</Label>
+            <Input
+              id="city"
+              value={formData.city}
+              onChange={(e) => onFieldChange('city', e.target.value)}
+              placeholder="San Francisco"
+              data-testid="location-city-input"
+            />
+          </div>
+          <div>
+            <Label htmlFor="state">State *</Label>
+            <Input
+              id="state"
+              value={formData.state}
+              onChange={(e) => onFieldChange('state', e.target.value)}
+              placeholder="CA"
+              data-testid="location-state-input"
+            />
+          </div>
+          <div>
+            <Label htmlFor="postal_code">Postal Code *</Label>
+            <Input
+              id="postal_code"
+              value={formData.postal_code}
+              onChange={(e) => onFieldChange('postal_code', e.target.value)}
+              placeholder="94102"
+              data-testid="location-postal-input"
+            />
+          </div>
+          <div>
+            <Label htmlFor="country">Country *</Label>
+            <Input
+              id="country"
+              value={formData.country}
+              onChange={(e) => onFieldChange('country', e.target.value)}
+              placeholder="USA"
+              data-testid="location-country-input"
+            />
+          </div>
+          <div>
+            <Label htmlFor="latitude">Latitude</Label>
+            <Input
+              id="latitude"
+              value={formData.latitude}
+              onChange={(e) => onFieldChange('latitude', e.target.value)}
+              placeholder="37.7749"
+              data-testid="location-latitude-input"
+            />
+          </div>
+          <div>
+            <Label htmlFor="longitude">Longitude</Label>
+            <Input
+              id="longitude"
+              value={formData.longitude}
+              onChange={(e) => onFieldChange('longitude', e.target.value)}
+              placeholder="-122.4194"
+              data-testid="location-longitude-input"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose} data-testid="cancel-location-btn">
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={onSubmit}
+            disabled={!formData.name || !formData.address || !formData.city || !formData.state || !formData.postal_code || !formData.country}
+            data-testid="submit-location-btn"
+          >
+            {title.includes('Add') ? 'Add Location' : 'Update Location'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const ChargingLocations = () => {
   const { token } = useAuth();
   const [locations, setLocations] = useState([]);
@@ -77,6 +185,10 @@ const ChargingLocations = () => {
     const value = e.target.value;
     setSearchQuery(value);
     fetchLocations(value);
+  };
+
+  const handleFieldChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const resetForm = () => {
@@ -187,130 +299,6 @@ const ChargingLocations = () => {
       longitude: location.longitude || '',
     });
     setIsEditDialogOpen(true);
-  };
-
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const LocationDialog = ({ isOpen, onClose, onSubmit, title, description }) => {
-    if (!isOpen) return null;
-    
-    return (
-      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-        <DialogContent className="max-w-2xl" onInteractOutside={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>{description}</DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
-            <div className="col-span-2">
-              <Label htmlFor="name">Location Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="Downtown Charging Hub"
-                data-testid="location-name-input"
-                autoComplete="off"
-              />
-            </div>
-            <div className="col-span-2">
-              <Label htmlFor="address">Address *</Label>
-              <Input
-                id="address"
-                value={formData.address}
-                onChange={(e) => handleInputChange('address', e.target.value)}
-                placeholder="123 Main Street"
-                data-testid="location-address-input"
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <Label htmlFor="city">City *</Label>
-              <Input
-                id="city"
-                value={formData.city}
-                onChange={(e) => handleInputChange('city', e.target.value)}
-                placeholder="San Francisco"
-                data-testid="location-city-input"
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <Label htmlFor="state">State *</Label>
-              <Input
-                id="state"
-                value={formData.state}
-                onChange={(e) => handleInputChange('state', e.target.value)}
-                placeholder="CA"
-                data-testid="location-state-input"
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <Label htmlFor="postal_code">Postal Code *</Label>
-              <Input
-                id="postal_code"
-                value={formData.postal_code}
-                onChange={(e) => handleInputChange('postal_code', e.target.value)}
-                placeholder="94102"
-                data-testid="location-postal-input"
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <Label htmlFor="country">Country *</Label>
-              <Input
-                id="country"
-                value={formData.country}
-                onChange={(e) => handleInputChange('country', e.target.value)}
-                placeholder="USA"
-                data-testid="location-country-input"
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <Label htmlFor="latitude">Latitude</Label>
-              <Input
-                id="latitude"
-                type="text"
-                value={formData.latitude}
-                onChange={(e) => handleInputChange('latitude', e.target.value)}
-                placeholder="37.7749"
-                data-testid="location-latitude-input"
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <Label htmlFor="longitude">Longitude</Label>
-              <Input
-                id="longitude"
-                type="text"
-                value={formData.longitude}
-                onChange={(e) => handleInputChange('longitude', e.target.value)}
-                placeholder="-122.4194"
-                data-testid="location-longitude-input"
-                autoComplete="off"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} data-testid="cancel-location-btn">
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={onSubmit}
-              disabled={!formData.name || !formData.address || !formData.city || !formData.state || !formData.postal_code || !formData.country}
-              data-testid="submit-location-btn"
-            >
-              {title === 'Add Location' ? 'Add Location' : 'Update Location'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
   };
 
   return (
@@ -425,7 +413,7 @@ const ChargingLocations = () => {
         </CardContent>
       </Card>
 
-      <LocationDialog
+      <LocationFormDialog
         isOpen={isAddDialogOpen}
         onClose={() => {
           setIsAddDialogOpen(false);
@@ -434,9 +422,11 @@ const ChargingLocations = () => {
         onSubmit={handleAddLocation}
         title="Add Location"
         description="Create a new charging location in your network"
+        formData={formData}
+        onFieldChange={handleFieldChange}
       />
 
-      <LocationDialog
+      <LocationFormDialog
         isOpen={isEditDialogOpen}
         onClose={() => {
           setIsEditDialogOpen(false);
@@ -446,6 +436,8 @@ const ChargingLocations = () => {
         onSubmit={handleEditLocation}
         title="Edit Location"
         description="Update charging location details"
+        formData={formData}
+        onFieldChange={handleFieldChange}
       />
     </div>
   );
