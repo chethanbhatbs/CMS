@@ -34,6 +34,7 @@ import AdminUserManagement from '@/pages/Administration/AdminUserManagement';
 import FranchiseManagement from '@/pages/Administration/FranchiseManagement';
 import RoleManagement from '@/pages/Administration/RoleManagement';
 import OEMManagement from '@/pages/Administration/OEMManagement';
+import ChargerModelManagement from '@/pages/Administration/ChargerModelManagement';
 import RFIDManagement from '@/pages/RFIDManagement';
 import TariffManagement from '@/pages/TariffManagement';
 import AssetManagement from '@/pages/AssetManagement';
