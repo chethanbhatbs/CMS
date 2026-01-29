@@ -911,14 +911,26 @@ async def get_charge_point(
     charge_point_id: str,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Get a specific charge point by ID"""
+    """Get a specific charge point by ID with enriched data"""
     charge_point = await db.charge_points.find_one({"id": charge_point_id}, {"_id": 0})
     
     if not charge_point:
         raise HTTPException(status_code=404, detail="Charge point not found")
     
+    # Enrich with model data
+    enriched_cp = await enrich_charge_point(charge_point)
+    
     # Convert ISO strings back to datetime
-    if isinstance(charge_point.get("created_at"), str):
+    if isinstance(enriched_cp.get("created_at"), str):
+        enriched_cp["created_at"] = datetime.fromisoformat(enriched_cp["created_at"])
+    if isinstance(enriched_cp.get("updated_at"), str):
+        enriched_cp["updated_at"] = datetime.fromisoformat(enriched_cp["updated_at"])
+    if enriched_cp.get("last_heartbeat") and isinstance(enriched_cp["last_heartbeat"], str):
+        enriched_cp["last_heartbeat"] = datetime.fromisoformat(enriched_cp["last_heartbeat"])
+    if enriched_cp.get("go_live_date") and isinstance(enriched_cp["go_live_date"], str):
+        enriched_cp["go_live_date"] = datetime.fromisoformat(enriched_cp["go_live_date"])
+    
+    return enriched_cp
         charge_point["created_at"] = datetime.fromisoformat(charge_point["created_at"])
     if isinstance(charge_point.get("updated_at"), str):
         charge_point["updated_at"] = datetime.fromisoformat(charge_point["updated_at"])
