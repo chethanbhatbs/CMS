@@ -505,12 +505,12 @@ class ChargePointResponse(BaseModel):
     location_id: str
     vendor: str
     model: str
-    serial_number: Optional[str]
-    firmware_version: Optional[str]
+    serial_number: Optional[str] = None
+    firmware_version: Optional[str] = None
     connectors: List[Connector]
     status: str
     is_online: bool
-    last_heartbeat: Optional[datetime]
+    last_heartbeat: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
