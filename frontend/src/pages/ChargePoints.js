@@ -682,6 +682,38 @@ const ChargePoints = () => {
               </TableBody>
             </Table>
           )}
+          
+          {/* Pagination */}
+          {!loading && chargePoints.length > 0 && totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-slate-600">
+                Showing {startIndex + 1}-{Math.min(endIndex, chargePoints.length)} of {chargePoints.length}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  data-testid="prev-page-btn"
+                >
+                  Previous
+                </Button>
+                <span className="flex items-center px-3 text-sm text-slate-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  data-testid="next-page-btn"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
