@@ -14,6 +14,8 @@ from passlib.context import CryptContext
 import jwt
 import secrets
 from models import ChargingLocation, ChargePoint, Connector, OEM, ChargerModel, ConnectorConfig
+from ocpp_server import ocpp_router
+from ocpp_registry import registry
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
