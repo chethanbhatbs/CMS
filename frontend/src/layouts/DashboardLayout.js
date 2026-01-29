@@ -232,6 +232,7 @@ const SidebarContent = ({ collapsed, onNavigate, searchQuery }) => {
 const DashboardLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
