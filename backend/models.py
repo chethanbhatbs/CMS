@@ -176,24 +176,20 @@ class Connector(BaseModel):
 
 
 class ChargePoint(BaseModel):
-    """Individual charging station/EVSE"""
+    """Individual charging station/EVSE - References Charger Model"""
     model_config = ConfigDict(extra="ignore")
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     charge_point_id: str  # OCPP Identity
     name: str
     location_id: str
-    oem_id: Optional[str] = None  # Reference to OEM
-    charger_model_id: Optional[str] = None  # Reference to ChargerModel
-    vendor: str
-    model: str
-    serial_number: Optional[str] = None
-    firmware_version: Optional[str] = None
+    oem_id: str  # Reference to OEM
+    charger_model_id: str  # Reference to ChargerModel (source of truth)
+    serial_number: Optional[str] = None  # Instance-specific serial
+    firmware_version_override: Optional[str] = None  # Override model's default firmware
     websocket_id: Optional[str] = None  # OCPP WebSocket connection ID
-    protocol: str = "OCPP 1.6"  # OCPP version
     go_live_date: Optional[datetime] = None
-    connectors: List[Connector] = []
-    status: ChargePointStatus = ChargePointStatus.AVAILABLE
+    status: ChargePointStatus = ChargePointStatus.UNAVAILABLE  # Default UNAVAILABLE until first StatusNotification
     is_online: bool = False
     last_heartbeat: Optional[datetime] = None
     total_energy_kwh: float = 0.0  # Total energy consumed
