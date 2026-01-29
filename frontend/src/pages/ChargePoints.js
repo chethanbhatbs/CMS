@@ -622,7 +622,14 @@ const ChargePoints = () => {
                       </Link>
                     </TableCell>
                     <TableCell className="font-medium">{cp.name}</TableCell>
-                    <TableCell className="text-sm">{getLocationName(cp.location_id)}</TableCell>
+                    <TableCell className="text-sm">
+                      <Link
+                        to={`/charging-locations/${cp.location_id}`}
+                        className="text-primary hover:underline"
+                      >
+                        {getLocationName(cp.location_id)}
+                      </Link>
+                    </TableCell>
                     <TableCell className="text-sm text-slate-600">{cp.vendor} / {cp.model}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
