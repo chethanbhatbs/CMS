@@ -988,21 +988,38 @@ async def update_charge_point(
     charge_point_data: ChargePointUpdate,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Update an existing charge point"""
+    """Update an existing charge point (instance-specific fields only)"""
     # Find existing charge point
     existing_cp = await db.charge_points.find_one({"id": charge_point_id}, {"_id": 0})
     
     if not existing_cp:
         raise HTTPException(status_code=404, detail="Charge point not found")
     
-    # Prepare update data
+    # Prepare update data (only instance-specific fields)
     update_data = {k: v for k, v in charge_point_data.model_dump().items() if v is not None}
-    
-    # Convert connectors to dict if provided
-    if "connectors" in update_data and update_data["connectors"]:
-        update_data["connectors"] = [c.model_dump() for c in charge_point_data.connectors]
-    
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Update charge point
+    await db.charge_points.update_one(
+        {"id": charge_point_id},
+        {"$set": update_data}
+    )
+    
+    # Get updated charge point and enrich
+    updated_cp = await db.charge_points.find_one({"id": charge_point_id}, {"_id": 0})
+    enriched_cp = await enrich_charge_point(updated_cp)
+    
+    # Convert ISO strings back to datetime
+    if isinstance(enriched_cp.get("created_at"), str):
+        enriched_cp["created_at"] = datetime.fromisoformat(enriched_cp["created_at"])
+    if isinstance(enriched_cp.get("updated_at"), str):
+        enriched_cp["updated_at"] = datetime.fromisoformat(enriched_cp["updated_at"])
+    if enriched_cp.get("last_heartbeat") and isinstance(enriched_cp["last_heartbeat"], str):
+        enriched_cp["last_heartbeat"] = datetime.fromisoformat(enriched_cp["last_heartbeat"])
+    if enriched_cp.get("go_live_date") and isinstance(enriched_cp["go_live_date"], str):
+        enriched_cp["go_live_date"] = datetime.fromisoformat(enriched_cp["go_live_date"])
+    
+    return enriched_cp
     
     # Update charge point
     await db.charge_points.update_one(
