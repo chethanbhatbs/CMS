@@ -396,6 +396,10 @@ class EVChargingCMSAPITester:
             ("Login After Reset", self.test_login_after_reset),
             ("Unauthorized Access", self.test_unauthorized_access),
             ("Invalid Token Access", self.test_invalid_token_access),
+            ("Get OEMs", self.test_get_oems),
+            ("Create OEM", self.test_create_oem),
+            ("Get Locations", self.test_get_locations),
+            ("Get Charge Points", self.test_get_charge_points),
         ]
         
         for test_name, test_func in tests:
