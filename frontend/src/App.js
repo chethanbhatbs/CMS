@@ -33,10 +33,14 @@ import ReportsLogs from '@/pages/ReportsLogs';
 import AdminUserManagement from '@/pages/Administration/AdminUserManagement';
 import FranchiseManagement from '@/pages/Administration/FranchiseManagement';
 import RoleManagement from '@/pages/Administration/RoleManagement';
+import OEMManagement from '@/pages/Administration/OEMManagement';
 import RFIDManagement from '@/pages/RFIDManagement';
 import TariffManagement from '@/pages/TariffManagement';
 import AssetManagement from '@/pages/AssetManagement';
 import Configuration from '@/pages/Configuration';
+
+// Charge Point Details
+import ChargePointDetails from '@/pages/ChargePointDetails';
 
 function App() {
   return (
