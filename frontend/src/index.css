@@ -113,3 +113,9 @@ code {
         border-bottom-color: inherit;
     }
 }
+
+[data-sonner-toast] [data-description] {
+    color: rgb(71, 85, 105) !important;
+    opacity: 1 !important;
+    font-weight: 500 !important;
+}
