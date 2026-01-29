@@ -47,6 +47,7 @@ class ConnectorStatus(str, Enum):
     OCCUPIED = "OCCUPIED"
     UNAVAILABLE = "UNAVAILABLE"
     FAULTED = "FAULTED"
+    UNKNOWN = "UNKNOWN"
 
 
 class SessionStatus(str, Enum):
