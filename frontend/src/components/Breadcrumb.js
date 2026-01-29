@@ -4,7 +4,7 @@ import { ChevronRight, Home } from 'lucide-react';
 
 export const Breadcrumb = ({ items }) => {
   return (
-    <nav className="flex items-center space-x-2 text-sm text-slate-600 mb-6">
+    <nav className="flex items-center space-x-2 text-sm text-slate-600 mb-6" data-testid="breadcrumb-nav">
       <Link
         to="/dashboard"
         className="flex items-center hover:text-slate-900 transition-colors"
@@ -18,13 +18,13 @@ export const Breadcrumb = ({ items }) => {
           {item.href ? (
             <Link
               to={item.href}
-              className="hover:text-slate-900 transition-colors"
-              data-testid={`breadcrumb-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+              className="hover:text-slate-900 transition-colors font-medium"
+              data-testid={`breadcrumb-link-${index}`}
             >
               {item.label}
             </Link>
           ) : (
-            <span className="text-slate-900 font-medium" data-testid="breadcrumb-current">
+            <span className="text-slate-900 font-semibold" data-testid="breadcrumb-current">
               {item.label}
             </span>
           )}
