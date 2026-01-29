@@ -7,16 +7,36 @@ import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import Dashboard from '@/pages/Dashboard';
-import ChargingNetwork from '@/pages/ChargingNetwork';
+
+// CRM
+import RetailUsers from '@/pages/CRM/RetailUsers';
+import GroupUsers from '@/pages/CRM/GroupUsers';
+
+// Charging Network
 import ChargingLocations from '@/pages/ChargingLocations';
 import ChargePoints from '@/pages/ChargePoints';
-import Sessions from '@/pages/Sessions';
+
+// Operations
+import ChargingTransactions from '@/pages/Operations/ChargingTransactions';
+import ActiveSessions from '@/pages/Operations/ActiveSessions';
+import OnHoldTransactions from '@/pages/Operations/OnHoldTransactions';
+
+// Remote Operations
+import StartRemoteSession from '@/pages/RemoteOperations/StartRemoteSession';
+
+// Monitoring
+import ChargerLogs from '@/pages/Monitoring/ChargerLogs';
+import AlarmSummary from '@/pages/Monitoring/AlarmSummary';
+import ReportsLogs from '@/pages/ReportsLogs';
+
+// Administration
+import AdminUserManagement from '@/pages/Administration/AdminUserManagement';
+import FranchiseManagement from '@/pages/Administration/FranchiseManagement';
+import RoleManagement from '@/pages/Administration/RoleManagement';
 import RFIDManagement from '@/pages/RFIDManagement';
 import TariffManagement from '@/pages/TariffManagement';
-import Accounts from '@/pages/Accounts';
 import AssetManagement from '@/pages/AssetManagement';
 import Configuration from '@/pages/Configuration';
-import ReportsLogs from '@/pages/ReportsLogs';
 
 function App() {
   return (
@@ -30,16 +50,36 @@ function App() {
           <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="charging-network" element={<ChargingNetwork />} />
+            
+            {/* CRM */}
+            <Route path="crm/retail-users" element={<RetailUsers />} />
+            <Route path="crm/group-users" element={<GroupUsers />} />
+            
+            {/* Charging Network */}
             <Route path="charging-locations" element={<ChargingLocations />} />
             <Route path="charge-points" element={<ChargePoints />} />
-            <Route path="sessions" element={<Sessions />} />
-            <Route path="rfid-management" element={<RFIDManagement />} />
-            <Route path="tariff-management" element={<TariffManagement />} />
-            <Route path="accounts" element={<Accounts />} />
-            <Route path="asset-management" element={<AssetManagement />} />
-            <Route path="configuration" element={<Configuration />} />
-            <Route path="reports-logs" element={<ReportsLogs />} />
+            
+            {/* Operations */}
+            <Route path="operations/transactions" element={<ChargingTransactions />} />
+            <Route path="operations/active-sessions" element={<ActiveSessions />} />
+            <Route path="operations/on-hold" element={<OnHoldTransactions />} />
+            
+            {/* Remote Operations */}
+            <Route path="remote-operations/start-session" element={<StartRemoteSession />} />
+            
+            {/* Monitoring */}
+            <Route path="monitoring/charger-logs" element={<ChargerLogs />} />
+            <Route path="monitoring/alarms" element={<AlarmSummary />} />
+            <Route path="monitoring/reports" element={<ReportsLogs />} />
+            
+            {/* Administration */}
+            <Route path="admin/users" element={<AdminUserManagement />} />
+            <Route path="admin/franchises" element={<FranchiseManagement />} />
+            <Route path="admin/roles" element={<RoleManagement />} />
+            <Route path="admin/rfid" element={<RFIDManagement />} />
+            <Route path="admin/tariffs" element={<TariffManagement />} />
+            <Route path="admin/assets" element={<AssetManagement />} />
+            <Route path="admin/configuration" element={<Configuration />} />
           </Route>
         </Routes>
       </BrowserRouter>
