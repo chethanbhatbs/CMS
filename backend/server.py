@@ -1287,6 +1287,175 @@ async def get_connected_charge_points(
         "charge_points": connected_cps
     }
 
+
+# ============================================
+# TARIFF MANAGEMENT ENDPOINTS
+# ============================================
+
+class TariffCreate(BaseModel):
+    tariff_name: str
+    tariff_type: str  # "energy_based" or "time_based"
+    unit_rate: float
+    tax_percentage: float = 0.0
+    description: Optional[str] = None
+    is_default: bool = False
+
+
+class TariffUpdate(BaseModel):
+    tariff_name: Optional[str] = None
+    tariff_type: Optional[str] = None
+    unit_rate: Optional[float] = None
+    tax_percentage: Optional[float] = None
+    description: Optional[str] = None
+    is_default: Optional[bool] = None
+
+
+class TariffResponse(BaseModel):
+    id: str
+    tariff_name: str
+    tariff_type: str
+    unit_rate: float
+    tax_percentage: float
+    description: Optional[str]
+    is_default: bool
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+@api_router.get("/tariffs", response_model=List[TariffResponse])
+async def get_tariffs(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get all tariffs"""
+    tariffs = await db.tariffs.find({"status": "ACTIVE"}, {"_id": 0}).to_list(100)
+    
+    for tariff in tariffs:
+        if isinstance(tariff.get("created_at"), str):
+            tariff["created_at"] = datetime.fromisoformat(tariff["created_at"])
+        if isinstance(tariff.get("updated_at"), str):
+            tariff["updated_at"] = datetime.fromisoformat(tariff["updated_at"])
+    
+    return tariffs
+
+
+@api_router.post("/tariffs", response_model=TariffResponse)
+async def create_tariff(
+    tariff_data: TariffCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Create a new tariff"""
+    from models import Tariff
+    
+    tariff = Tariff(**tariff_data.model_dump())
+    
+    tariff_dict = tariff.model_dump()
+    tariff_dict['created_at'] = tariff_dict['created_at'].isoformat()
+    tariff_dict['updated_at'] = tariff_dict['updated_at'].isoformat()
+    await db.tariffs.insert_one(tariff_dict)
+    
+    return TariffResponse(**tariff.model_dump())
+
+
+@api_router.put("/tariffs/{tariff_id}", response_model=TariffResponse)
+async def update_tariff(
+    tariff_id: str,
+    tariff_data: TariffUpdate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update an existing tariff"""
+    existing = await db.tariffs.find_one({"id": tariff_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Tariff not found")
+    
+    update_data = {k: v for k, v in tariff_data.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.tariffs.update_one({"id": tariff_id}, {"$set": update_data})
+    
+    updated = await db.tariffs.find_one({"id": tariff_id}, {"_id": 0})
+    if isinstance(updated.get("created_at"), str):
+        updated["created_at"] = datetime.fromisoformat(updated["created_at"])
+    if isinstance(updated.get("updated_at"), str):
+        updated["updated_at"] = datetime.fromisoformat(updated["updated_at"])
+    
+    return updated
+
+
+@api_router.delete("/tariffs/{tariff_id}")
+async def delete_tariff(
+    tariff_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Delete (soft delete) a tariff"""
+    result = await db.tariffs.update_one(
+        {"id": tariff_id},
+        {"$set": {"status": "INACTIVE", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Tariff not found")
+    
+    return {"message": "Tariff deleted successfully"}
+
+
+# Tariff Assignment APIs
+class TariffAssignmentCreate(BaseModel):
+    tariff_id: str
+    location_id: Optional[str] = None
+    charge_point_id: Optional[str] = None
+    connector_id: Optional[int] = None
+    effective_from: datetime
+    effective_to: Optional[datetime] = None
+    time_window_start: Optional[str] = None
+    time_window_end: Optional[str] = None
+    days_of_week: List[int] = []
+    is_peak_tariff: bool = False
+
+
+@api_router.post("/tariff-assignments")
+async def create_tariff_assignment(
+    assignment_data: TariffAssignmentCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Assign tariff to location/CP/connector"""
+    from models import TariffAssignment
+    
+    # Verify tariff exists
+    tariff = await db.tariffs.find_one({"id": assignment_data.tariff_id}, {"_id": 0})
+    if not tariff:
+        raise HTTPException(status_code=404, detail="Tariff not found")
+    
+    assignment = TariffAssignment(**assignment_data.model_dump())
+    
+    assignment_dict = assignment.model_dump()
+    assignment_dict['created_at'] = assignment_dict['created_at'].isoformat()
+    assignment_dict['updated_at'] = assignment_dict['updated_at'].isoformat()
+    assignment_dict['effective_from'] = assignment_dict['effective_from'].isoformat()
+    if assignment_dict.get('effective_to'):
+        assignment_dict['effective_to'] = assignment_dict['effective_to'].isoformat()
+    
+    await db.tariff_assignments.insert_one(assignment_dict)
+    
+    return {"message": "Tariff assigned successfully", "id": assignment.id}
+
+
+@api_router.get("/tariff-assignments")
+async def get_tariff_assignments(
+    location_id: Optional[str] = None,
+    charge_point_id: Optional[str] = None,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get tariff assignments"""
+    query = {"status": "ACTIVE"}
+    if location_id:
+        query["location_id"] = location_id
+    if charge_point_id:
+        query["charge_point_id"] = charge_point_id
+    
+    assignments = await db.tariff_assignments.find(query, {"_id": 0}).to_list(100)
+    return assignments
+
 # Include the router in the main app
 app.include_router(api_router)
 app.include_router(ocpp_router)  # Add OCPP WebSocket router
