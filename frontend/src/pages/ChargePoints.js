@@ -498,7 +498,23 @@ const ChargePoints = () => {
       serial_number: cp.serial_number || '',
       firmware_version: cp.firmware_version || '',
     });
+    
+    // Trigger model filtering for edit mode
+    if (cp.oem_id) {
+      const filtered = allChargerModels.filter(m => m.oem_id === cp.oem_id);
+      setFilteredChargerModels(filtered);
+    }
+    
     setIsEditDialogOpen(true);
+  };
+
+  const totalPages = Math.ceil(chargePoints.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedChargePoints = chargePoints.slice(startIndex, endIndex);
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
   };
 
   const getLocationName = (locationId) => {
