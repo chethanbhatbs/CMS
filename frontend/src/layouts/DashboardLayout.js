@@ -106,7 +106,7 @@ const menuStructure = [
   },
 ];
 
-const SidebarContent = ({ collapsed, onNavigate }) => {
+const SidebarContent = ({ collapsed, onNavigate, searchQuery }) => {
   const location = useLocation();
   const [openSections, setOpenSections] = useState(
     menuStructure.reduce((acc, item) => {
@@ -120,6 +120,37 @@ const SidebarContent = ({ collapsed, onNavigate }) => {
   const toggleSection = (label) => {
     setOpenSections((prev) => ({ ...prev, [label]: !prev[label] }));
   };
+
+  // Filter menu items based on search
+  const filterMenuItems = (items) => {
+    if (!searchQuery) return items;
+    
+    const query = searchQuery.toLowerCase();
+    return items.filter(item => {
+      if (item.type === 'single') {
+        return item.label.toLowerCase().includes(query);
+      }
+      if (item.type === 'section') {
+        const hasMatchingItems = item.items.some(subItem => 
+          subItem.label.toLowerCase().includes(query)
+        );
+        return hasMatchingItems || item.label.toLowerCase().includes(query);
+      }
+      return false;
+    }).map(item => {
+      if (item.type === 'section' && searchQuery) {
+        return {
+          ...item,
+          items: item.items.filter(subItem => 
+            subItem.label.toLowerCase().includes(query)
+          )
+        };
+      }
+      return item;
+    });
+  };
+
+  const filteredMenu = filterMenuItems(menuStructure);
 
   return (
     <nav className="flex-1 overflow-y-auto py-4">
