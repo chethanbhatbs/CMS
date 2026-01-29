@@ -281,6 +281,15 @@ const ChargePoints = () => {
     }
   }, [formData.oem_id, allChargerModels]);
 
+  useEffect(() => {
+    if (formData.charger_model_id) {
+      const model = allChargerModels.find(m => m.id === formData.charger_model_id);
+      setSelectedModelDetails(model);
+    } else {
+      setSelectedModelDetails(null);
+    }
+  }, [formData.charger_model_id, allChargerModels]);
+
   const fetchLocations = async () => {
     try {
       const response = await axios.get(`${API}/locations`, {
