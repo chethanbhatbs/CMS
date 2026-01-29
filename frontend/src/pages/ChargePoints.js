@@ -535,6 +535,11 @@ const ChargePoints = () => {
 
   return (
     <div className="space-y-6" data-testid="charge-points-page">
+      <Breadcrumb items={[
+        { label: 'Charging Network', href: null },
+        { label: 'Charge Points', href: null }
+      ]} />
+      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-heading font-bold text-slate-900">Charge Points</h1>
