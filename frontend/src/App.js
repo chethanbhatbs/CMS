@@ -83,6 +83,7 @@ function App() {
             <Route path="admin/franchises" element={<FranchiseManagement />} />
             <Route path="admin/roles" element={<RoleManagement />} />
             <Route path="admin/oems" element={<OEMManagement />} />
+            <Route path="admin/charger-models" element={<ChargerModelManagement />} />
             <Route path="admin/rfid" element={<RFIDManagement />} />
             <Route path="admin/tariffs" element={<TariffManagement />} />
             <Route path="admin/assets" element={<AssetManagement />} />
