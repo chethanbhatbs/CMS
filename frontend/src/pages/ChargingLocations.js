@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -34,7 +35,130 @@ import { useAuth } from '@/contexts/AuthContext';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+const ADDRESS_MAX_LENGTH = 255;
+
+const COUNTRIES = [
+  { code: 'US', name: 'United States' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'IN', name: 'India' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'FR', name: 'France' },
+];
+
+const US_STATES = [
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+];
+
+const CANADA_PROVINCES = [
+  'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'
+];
+
+const UK_COUNTIES = [
+  'England', 'Scotland', 'Wales', 'Northern Ireland'
+];
+
+const INDIA_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+];
+
+const getStatesForCountry = (countryCode) => {
+  switch (countryCode) {
+    case 'US':
+      return US_STATES;
+    case 'CA':
+      return CANADA_PROVINCES;
+    case 'GB':
+      return UK_COUNTIES;
+    case 'IN':
+      return INDIA_STATES;
+    default:
+      return [];
+  }
+};
+
 const LocationFormDialog = ({ isOpen, onClose, onSubmit, title, description, formData, onFieldChange }) => {
+  const [availableStates, setAvailableStates] = useState([]);
+  const [isLoadingCity, setIsLoadingCity] = useState(false);
+
+  useEffect(() => {
+    if (formData.country) {
+      const countryCode = COUNTRIES.find(c => c.name === formData.country)?.code || '';
+      setAvailableStates(getStatesForCountry(countryCode));
+    }
+  }, [formData.country]);
+
+  const fetchCityFromPostalCode = async (postalCode, country) => {
+    if (!postalCode || postalCode.length < 3) return;
+
+    setIsLoadingCity(true);
+    try {
+      const countryCode = COUNTRIES.find(c => c.name === country)?.code || 'US';
+      const response = await axios.get(`https://api.zippopotam.us/${countryCode.toLowerCase()}/${postalCode}`);
+      
+      if (response.data && response.data.places && response.data.places.length > 0) {
+        const place = response.data.places[0];
+        onFieldChange('city', place['place name']);
+        onFieldChange('state', place['state abbreviation'] || place['state']);
+        
+        if (place.latitude && place.longitude) {
+          onFieldChange('latitude', parseFloat(place.latitude).toFixed(5));
+          onFieldChange('longitude', parseFloat(place.longitude).toFixed(5));
+        }
+        
+        toast.success('City auto-filled from postal code');
+      }
+    } catch (error) {
+      console.log('Could not fetch city from postal code');
+    } finally {
+      setIsLoadingCity(false);
+    }
+  };
+
+  const handlePostalCodeChange = (value) => {
+    onFieldChange('postal_code', value);
+    
+    if (value.length >= 5 && formData.country) {
+      fetchCityFromPostalCode(value, formData.country);
+    }
+  };
+
+  const handleCountryChange = (value) => {
+    onFieldChange('country', value);
+    onFieldChange('state', '');
+    onFieldChange('city', '');
+    onFieldChange('postal_code', '');
+  };
+
+  const validateLatLong = (value, field) => {
+    if (!value) return true;
+    
+    const num = parseFloat(value);
+    if (isNaN(num)) return false;
+    
+    const parts = value.split('.');
+    if (parts.length === 2 && parts[1].length > 5) {
+      const truncated = num.toFixed(5);
+      onFieldChange(field, truncated);
+      toast.info(`${field === 'latitude' ? 'Latitude' : 'Longitude'} rounded to 5 decimal places`);
+    }
+    
+    return true;
+  };
+
+  const addressRemaining = ADDRESS_MAX_LENGTH - (formData.address?.length || 0);
+
+  if (!isOpen) return null;
+  
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl" onPointerDownOutside={(e) => e.preventDefault()}>
@@ -51,19 +175,69 @@ const LocationFormDialog = ({ isOpen, onClose, onSubmit, title, description, for
               onChange={(e) => onFieldChange('name', e.target.value)}
               placeholder="Downtown Charging Hub"
               data-testid="location-name-input"
+              autoComplete="off"
             />
           </div>
+
           <div className="col-span-2">
-            <Label htmlFor="address">Address *</Label>
-            <Input
-              id="address"
-              value={formData.address}
-              onChange={(e) => onFieldChange('address', e.target.value)}
-              placeholder="123 Main Street"
-              data-testid="location-address-input"
-            />
+            <Label htmlFor="country">Country *</Label>
+            <Select value={formData.country} onValueChange={handleCountryChange}>
+              <SelectTrigger data-testid="country-select">
+                <SelectValue placeholder="Select country" />
+              </SelectTrigger>
+              <SelectContent>
+                {COUNTRIES.map((country) => (
+                  <SelectItem key={country.code} value={country.name}>
+                    {country.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
           <div>
+            <Label htmlFor="state">State / Province *</Label>
+            {availableStates.length > 0 ? (
+              <Select value={formData.state} onValueChange={(value) => onFieldChange('state', value)}>
+                <SelectTrigger data-testid="state-select">
+                  <SelectValue placeholder="Select state" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableStates.map((state) => (
+                    <SelectItem key={state} value={state}>
+                      {state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id="state"
+                value={formData.state}
+                onChange={(e) => onFieldChange('state', e.target.value)}
+                placeholder="Enter state"
+                data-testid="location-state-input"
+                autoComplete="off"
+              />
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="postal_code">Postal Code *</Label>
+            <Input
+              id="postal_code"
+              value={formData.postal_code}
+              onChange={(e) => handlePostalCodeChange(e.target.value)}
+              placeholder="94102"
+              data-testid="location-postal-input"
+              autoComplete="off"
+            />
+            {isLoadingCity && (
+              <p className="text-xs text-slate-500 mt-1">Fetching city...</p>
+            )}
+          </div>
+
+          <div className="col-span-2">
             <Label htmlFor="city">City *</Label>
             <Input
               id="city"
@@ -71,57 +245,61 @@ const LocationFormDialog = ({ isOpen, onClose, onSubmit, title, description, for
               onChange={(e) => onFieldChange('city', e.target.value)}
               placeholder="San Francisco"
               data-testid="location-city-input"
+              autoComplete="off"
             />
+            <p className="text-xs text-slate-500 mt-1">City is auto-filled from postal code but can be edited if needed</p>
           </div>
-          <div>
-            <Label htmlFor="state">State *</Label>
+
+          <div className="col-span-2">
+            <Label htmlFor="address">Address *</Label>
             <Input
-              id="state"
-              value={formData.state}
-              onChange={(e) => onFieldChange('state', e.target.value)}
-              placeholder="CA"
-              data-testid="location-state-input"
+              id="address"
+              value={formData.address}
+              onChange={(e) => {
+                if (e.target.value.length <= ADDRESS_MAX_LENGTH) {
+                  onFieldChange('address', e.target.value);
+                }
+              }}
+              placeholder="123 Main Street"
+              data-testid="location-address-input"
+              autoComplete="off"
+              maxLength={ADDRESS_MAX_LENGTH}
             />
+            <p className={`text-xs mt-1 ${addressRemaining < 20 ? 'text-orange-600' : 'text-slate-500'}`}>
+              {addressRemaining} characters remaining
+            </p>
           </div>
-          <div>
-            <Label htmlFor="postal_code">Postal Code *</Label>
-            <Input
-              id="postal_code"
-              value={formData.postal_code}
-              onChange={(e) => onFieldChange('postal_code', e.target.value)}
-              placeholder="94102"
-              data-testid="location-postal-input"
-            />
-          </div>
-          <div>
-            <Label htmlFor="country">Country *</Label>
-            <Input
-              id="country"
-              value={formData.country}
-              onChange={(e) => onFieldChange('country', e.target.value)}
-              placeholder="USA"
-              data-testid="location-country-input"
-            />
-          </div>
+
           <div>
             <Label htmlFor="latitude">Latitude</Label>
             <Input
               id="latitude"
               value={formData.latitude}
               onChange={(e) => onFieldChange('latitude', e.target.value)}
-              placeholder="37.7749"
+              onBlur={(e) => validateLatLong(e.target.value, 'latitude')}
+              placeholder="37.77490"
               data-testid="location-latitude-input"
+              autoComplete="off"
             />
+            <p className="text-xs text-slate-400 mt-1">
+              Enter latitude up to 5 decimal places for better precision.
+            </p>
           </div>
+
           <div>
             <Label htmlFor="longitude">Longitude</Label>
             <Input
               id="longitude"
               value={formData.longitude}
               onChange={(e) => onFieldChange('longitude', e.target.value)}
-              placeholder="-122.4194"
+              onBlur={(e) => validateLatLong(e.target.value, 'longitude')}
+              placeholder="-122.41940"
               data-testid="location-longitude-input"
+              autoComplete="off"
             />
+            <p className="text-xs text-slate-400 mt-1">
+              Enter longitude up to 5 decimal places for better precision.
+            </p>
           </div>
         </div>
         <DialogFooter>
@@ -216,13 +394,18 @@ const ChargingLocations = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      toast.success('Location added successfully!');
+      toast.success('Location added successfully!', {
+        description: `${formData.name} has been added to your network`,
+      });
       setIsAddDialogOpen(false);
       resetForm();
       fetchLocations(searchQuery);
     } catch (error) {
       console.error('Error adding location:', error);
-      toast.error(error.response?.data?.detail || 'Failed to add location');
+      const errorMsg = error.response?.data?.detail || 'Failed to add location';
+      toast.error('Failed to add location', {
+        description: errorMsg,
+      });
     }
   };
 
@@ -238,35 +421,48 @@ const ChargingLocations = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      toast.success('Location updated successfully!');
+      toast.success('Location updated successfully!', {
+        description: `${formData.name} has been updated`,
+      });
       setIsEditDialogOpen(false);
       setSelectedLocation(null);
       resetForm();
       fetchLocations(searchQuery);
     } catch (error) {
       console.error('Error updating location:', error);
-      toast.error(error.response?.data?.detail || 'Failed to update location');
+      const errorMsg = error.response?.data?.detail || 'Failed to update location';
+      toast.error('Failed to update location', {
+        description: errorMsg,
+      });
     }
   };
 
-  const handleDeleteLocation = async (locationId) => {
-    if (!window.confirm('Are you sure you want to delete this location?')) return;
+  const handleDeleteLocation = async (locationId, locationName) => {
+    if (!window.confirm(`Are you sure you want to delete "${locationName}"? This action cannot be undone.`)) return;
 
     try {
       await axios.delete(`${API}/locations/${locationId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      toast.success('Location deleted successfully!');
+      toast.success('Location deleted successfully!', {
+        description: `${locationName} has been removed from your network`,
+      });
       fetchLocations(searchQuery);
     } catch (error) {
       console.error('Error deleting location:', error);
-      toast.error(error.response?.data?.detail || 'Failed to delete location');
+      const errorMsg = error.response?.data?.detail || 'Failed to delete location';
+      toast.error('Failed to delete location', {
+        description: errorMsg,
+      });
     }
   };
 
-  const handleToggleStatus = async (locationId, currentStatus) => {
+  const handleToggleStatus = async (locationId, currentStatus, locationName) => {
     const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    const action = newStatus === 'ACTIVE' ? 'enable' : 'disable';
+
+    if (!window.confirm(`Are you sure you want to ${action} "${locationName}"?`)) return;
 
     try {
       await axios.patch(
@@ -278,11 +474,16 @@ const ChargingLocations = () => {
         }
       );
 
-      toast.success(`Location ${newStatus === 'ACTIVE' ? 'enabled' : 'disabled'} successfully!`);
+      toast.success(`Location ${action}d successfully!`, {
+        description: `${locationName} is now ${newStatus}`,
+      });
       fetchLocations(searchQuery);
     } catch (error) {
       console.error('Error toggling status:', error);
-      toast.error(error.response?.data?.detail || 'Failed to update status');
+      const errorMsg = error.response?.data?.detail || 'Failed to update status';
+      toast.error(`Failed to ${action} location`, {
+        description: errorMsg,
+      });
     }
   };
 
@@ -295,8 +496,8 @@ const ChargingLocations = () => {
       state: location.state,
       postal_code: location.postal_code,
       country: location.country,
-      latitude: location.latitude || '',
-      longitude: location.longitude || '',
+      latitude: location.latitude ? location.latitude.toString() : '',
+      longitude: location.longitude ? location.longitude.toString() : '',
     });
     setIsEditDialogOpen(true);
   };
@@ -362,12 +563,12 @@ const ChargingLocations = () => {
                 {locations.map((location) => (
                   <TableRow key={location.id} data-testid={`location-row-${location.id}`}>
                     <TableCell className="font-medium">{location.name}</TableCell>
-                    <TableCell className="text-sm text-slate-600">{location.address}</TableCell>
+                    <TableCell className="text-sm text-slate-600 max-w-xs truncate">{location.address}</TableCell>
                     <TableCell>{location.city}</TableCell>
                     <TableCell>{location.state}</TableCell>
                     <TableCell className="text-sm text-slate-600">
                       {location.latitude && location.longitude
-                        ? `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
+                        ? `${parseFloat(location.latitude).toFixed(5)}, ${parseFloat(location.longitude).toFixed(5)}`
                         : '—'}
                     </TableCell>
                     <TableCell>{location.total_charge_points}</TableCell>
@@ -389,13 +590,13 @@ const ChargingLocations = () => {
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleToggleStatus(location.id, location.status)}
+                            onClick={() => handleToggleStatus(location.id, location.status, location.name)}
                             data-testid="toggle-status-btn"
                           >
                             {location.status === 'ACTIVE' ? 'Disable' : 'Enable'}
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleDeleteLocation(location.id)}
+                            onClick={() => handleDeleteLocation(location.id, location.name)}
                             className="text-red-600"
                             data-testid="delete-location-btn"
                           >
