@@ -340,11 +340,31 @@ class Tariff(BaseModel):
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     tariff_name: str
-    description: str
-    price_per_kwh: float
-    price_per_minute: float = 0.0
-    currency: str = "USD"
+    tariff_type: str  # "energy_based" or "time_based"
+    unit_rate: float  # Price per kWh or per minute
+    tax_percentage: float = 0.0
+    description: Optional[str] = None
     is_default: bool = False
+    status: str = "ACTIVE"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class TariffAssignment(BaseModel):
+    """Tariff assignment to location/CP/connector with time windows"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    tariff_id: str
+    location_id: Optional[str] = None  # If set, applies to all CPs at location
+    charge_point_id: Optional[str] = None  # If set, applies to specific CP
+    connector_id: Optional[int] = None  # If set, applies to specific connector
+    effective_from: datetime
+    effective_to: Optional[datetime] = None  # None means indefinite
+    time_window_start: Optional[str] = None  # HH:MM format for peak/off-peak
+    time_window_end: Optional[str] = None  # HH:MM format
+    days_of_week: List[int] = Field(default_factory=list)  # 0=Monday, 6=Sunday
+    is_peak_tariff: bool = False
     status: str = "ACTIVE"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
