@@ -473,6 +473,275 @@ async def delete_location(
     
     return {"message": "Location deleted successfully"}
 
+
+# ============================================
+# CHARGE POINTS ENDPOINTS
+# ============================================
+
+class ChargePointCreate(BaseModel):
+    charge_point_id: str
+    name: str
+    location_id: str
+    vendor: str
+    model: str
+    serial_number: Optional[str] = None
+    firmware_version: Optional[str] = None
+    connectors: List[Connector] = []
+
+
+class ChargePointUpdate(BaseModel):
+    name: Optional[str] = None
+    vendor: Optional[str] = None
+    model: Optional[str] = None
+    serial_number: Optional[str] = None
+    firmware_version: Optional[str] = None
+    connectors: Optional[List[Connector]] = None
+
+
+class ChargePointResponse(BaseModel):
+    id: str
+    charge_point_id: str
+    name: str
+    location_id: str
+    vendor: str
+    model: str
+    serial_number: Optional[str]
+    firmware_version: Optional[str]
+    connectors: List[Connector]
+    status: str
+    is_online: bool
+    last_heartbeat: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+
+@api_router.get("/charge-points", response_model=List[ChargePointResponse])
+async def get_charge_points(
+    location_id: Optional[str] = None,
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get all charge points with optional filters"""
+    query = {}
+    
+    # Add location filter
+    if location_id:
+        query["location_id"] = location_id
+    
+    # Add status filter
+    if status:
+        query["status"] = status
+    
+    # Add search filter
+    if search:
+        query["$or"] = [
+            {"name": {"$regex": search, "$options": "i"}},
+            {"charge_point_id": {"$regex": search, "$options": "i"}},
+            {"vendor": {"$regex": search, "$options": "i"}},
+            {"model": {"$regex": search, "$options": "i"}}
+        ]
+    
+    charge_points = await db.charge_points.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+    
+    # Convert ISO strings back to datetime
+    for cp in charge_points:
+        if isinstance(cp.get("created_at"), str):
+            cp["created_at"] = datetime.fromisoformat(cp["created_at"])
+        if isinstance(cp.get("updated_at"), str):
+            cp["updated_at"] = datetime.fromisoformat(cp["updated_at"])
+        if cp.get("last_heartbeat") and isinstance(cp["last_heartbeat"], str):
+            cp["last_heartbeat"] = datetime.fromisoformat(cp["last_heartbeat"])
+    
+    return charge_points
+
+
+@api_router.get("/locations/{location_id}/charge-points", response_model=List[ChargePointResponse])
+async def get_charge_points_by_location(
+    location_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get all charge points for a specific location"""
+    # Verify location exists
+    location = await db.charging_locations.find_one({"id": location_id}, {"_id": 0})
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    charge_points = await db.charge_points.find({"location_id": location_id}, {"_id": 0}).to_list(100)
+    
+    # Convert ISO strings back to datetime
+    for cp in charge_points:
+        if isinstance(cp.get("created_at"), str):
+            cp["created_at"] = datetime.fromisoformat(cp["created_at"])
+        if isinstance(cp.get("updated_at"), str):
+            cp["updated_at"] = datetime.fromisoformat(cp["updated_at"])
+        if cp.get("last_heartbeat") and isinstance(cp["last_heartbeat"], str):
+            cp["last_heartbeat"] = datetime.fromisoformat(cp["last_heartbeat"])
+    
+    return charge_points
+
+
+@api_router.get("/charge-points/{charge_point_id}", response_model=ChargePointResponse)
+async def get_charge_point(
+    charge_point_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get a specific charge point by ID"""
+    charge_point = await db.charge_points.find_one({"id": charge_point_id}, {"_id": 0})
+    
+    if not charge_point:
+        raise HTTPException(status_code=404, detail="Charge point not found")
+    
+    # Convert ISO strings back to datetime
+    if isinstance(charge_point.get("created_at"), str):
+        charge_point["created_at"] = datetime.fromisoformat(charge_point["created_at"])
+    if isinstance(charge_point.get("updated_at"), str):
+        charge_point["updated_at"] = datetime.fromisoformat(charge_point["updated_at"])
+    if charge_point.get("last_heartbeat") and isinstance(charge_point["last_heartbeat"], str):
+        charge_point["last_heartbeat"] = datetime.fromisoformat(charge_point["last_heartbeat"])
+    
+    return charge_point
+
+
+@api_router.post("/charge-points", response_model=ChargePointResponse)
+async def create_charge_point(
+    charge_point_data: ChargePointCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Create a new charge point"""
+    # Verify location exists
+    location = await db.charging_locations.find_one({"id": charge_point_data.location_id}, {"_id": 0})
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    # Check if charge_point_id already exists
+    existing_cp = await db.charge_points.find_one({"charge_point_id": charge_point_data.charge_point_id}, {"_id": 0})
+    if existing_cp:
+        raise HTTPException(status_code=400, detail="Charge Point ID already exists")
+    
+    # Create charge point object
+    charge_point = ChargePoint(
+        charge_point_id=charge_point_data.charge_point_id,
+        name=charge_point_data.name,
+        location_id=charge_point_data.location_id,
+        vendor=charge_point_data.vendor,
+        model=charge_point_data.model,
+        serial_number=charge_point_data.serial_number,
+        firmware_version=charge_point_data.firmware_version,
+        connectors=[c.model_dump() for c in charge_point_data.connectors]
+    )
+    
+    # Store in database
+    charge_point_dict = charge_point.model_dump()
+    charge_point_dict['created_at'] = charge_point_dict['created_at'].isoformat()
+    charge_point_dict['updated_at'] = charge_point_dict['updated_at'].isoformat()
+    if charge_point_dict.get('last_heartbeat'):
+        charge_point_dict['last_heartbeat'] = charge_point_dict['last_heartbeat'].isoformat()
+    await db.charge_points.insert_one(charge_point_dict)
+    
+    # Update location's total_charge_points count
+    await db.charging_locations.update_one(
+        {"id": charge_point_data.location_id},
+        {"$inc": {"total_charge_points": 1}}
+    )
+    
+    return ChargePointResponse(**charge_point.model_dump())
+
+
+@api_router.put("/charge-points/{charge_point_id}", response_model=ChargePointResponse)
+async def update_charge_point(
+    charge_point_id: str,
+    charge_point_data: ChargePointUpdate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update an existing charge point"""
+    # Find existing charge point
+    existing_cp = await db.charge_points.find_one({"id": charge_point_id}, {"_id": 0})
+    
+    if not existing_cp:
+        raise HTTPException(status_code=404, detail="Charge point not found")
+    
+    # Prepare update data
+    update_data = {k: v for k, v in charge_point_data.model_dump().items() if v is not None}
+    
+    # Convert connectors to dict if provided
+    if "connectors" in update_data and update_data["connectors"]:
+        update_data["connectors"] = [c.model_dump() for c in charge_point_data.connectors]
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Update charge point
+    await db.charge_points.update_one(
+        {"id": charge_point_id},
+        {"$set": update_data}
+    )
+    
+    # Get updated charge point
+    updated_cp = await db.charge_points.find_one({"id": charge_point_id}, {"_id": 0})
+    
+    # Convert ISO strings back to datetime
+    if isinstance(updated_cp.get("created_at"), str):
+        updated_cp["created_at"] = datetime.fromisoformat(updated_cp["created_at"])
+    if isinstance(updated_cp.get("updated_at"), str):
+        updated_cp["updated_at"] = datetime.fromisoformat(updated_cp["updated_at"])
+    if updated_cp.get("last_heartbeat") and isinstance(updated_cp["last_heartbeat"], str):
+        updated_cp["last_heartbeat"] = datetime.fromisoformat(updated_cp["last_heartbeat"])
+    
+    return updated_cp
+
+
+@api_router.patch("/charge-points/{charge_point_id}/status")
+async def update_charge_point_status(
+    charge_point_id: str,
+    status: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update charge point status"""
+    # Validate status
+    valid_statuses = ["AVAILABLE", "OCCUPIED", "UNAVAILABLE", "FAULTED", "OFFLINE"]
+    if status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+    
+    # Update status
+    result = await db.charge_points.update_one(
+        {"id": charge_point_id},
+        {"$set": {"status": status, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Charge point not found")
+    
+    return {"message": f"Charge point status updated to {status}"}
+
+
+@api_router.delete("/charge-points/{charge_point_id}")
+async def delete_charge_point(
+    charge_point_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Delete (soft delete) a charge point"""
+    # Get charge point to find location_id
+    charge_point = await db.charge_points.find_one({"id": charge_point_id}, {"_id": 0})
+    
+    if not charge_point:
+        raise HTTPException(status_code=404, detail="Charge point not found")
+    
+    # Soft delete by setting status to UNAVAILABLE
+    await db.charge_points.update_one(
+        {"id": charge_point_id},
+        {"$set": {"status": "UNAVAILABLE", "is_online": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Decrement location's total_charge_points count
+    await db.charging_locations.update_one(
+        {"id": charge_point["location_id"]},
+        {"$inc": {"total_charge_points": -1}}
+    )
+    
+    return {"message": "Charge point deleted successfully"}
+
 # Include the router in the main app
 app.include_router(api_router)
 
