@@ -782,7 +782,7 @@ class ChargePointResponse(BaseModel):
 
 # Helper function to enrich charge point with model data
 async def enrich_charge_point(cp_doc: dict) -> dict:
-    """Enrich charge point with data from ChargerModel and OEM"""
+    """Enrich charge point with data from ChargerModel and OEM, plus real connector statuses"""
     # Fetch ChargerModel
     charger_model = await db.charger_models.find_one({"id": cp_doc.get("charger_model_id")}, {"_id": 0})
     if not charger_model:
@@ -804,16 +804,25 @@ async def enrich_charge_point(cp_doc: dict) -> dict:
     # Firmware: use override if present, otherwise use model default
     cp_doc["firmware_version"] = cp_doc.get("firmware_version_override") or charger_model.get("default_firmware_version") or "Not Set"
     
-    # Connectors: derive from model's connector_configs
-    cp_doc["connectors"] = [
-        {
+    # Connectors: fetch REAL status from connector_status collection
+    connector_configs = charger_model.get("connector_configs", [])
+    connectors_with_status = []
+    
+    for config in connector_configs:
+        # Fetch actual connector status from database
+        conn_status = await db.connector_status.find_one({
+            "charge_point_id": cp_doc.get("charge_point_id"),
+            "connector_id": config["connector_number"]
+        }, {"_id": 0})
+        
+        connectors_with_status.append({
             "connector_id": config["connector_number"],
             "connector_type": config["connector_type"],
             "power_kw": config["max_power_kw"],
-            "status": "AVAILABLE"  # Default status, will be updated by OCPP
-        }
-        for config in charger_model.get("connector_configs", [])
-    ]
+            "status": conn_status["status"] if conn_status else "Unknown"
+        })
+    
+    cp_doc["connectors"] = connectors_with_status
     
     return cp_doc
 
