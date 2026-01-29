@@ -775,6 +775,44 @@ class ChargePointResponse(BaseModel):
     updated_at: datetime
 
 
+# Helper function to enrich charge point with model data
+async def enrich_charge_point(cp_doc: dict) -> dict:
+    """Enrich charge point with data from ChargerModel and OEM"""
+    # Fetch ChargerModel
+    charger_model = await db.charger_models.find_one({"id": cp_doc.get("charger_model_id")}, {"_id": 0})
+    if not charger_model:
+        raise HTTPException(status_code=404, detail=f"Charger model not found for CP {cp_doc.get('charge_point_id')}")
+    
+    # Fetch OEM
+    oem = await db.oems.find_one({"id": cp_doc.get("oem_id")}, {"_id": 0})
+    if not oem:
+        raise HTTPException(status_code=404, detail=f"OEM not found for CP {cp_doc.get('charge_point_id')}")
+    
+    # Derive fields from model
+    cp_doc["vendor"] = oem["oem_name"]
+    cp_doc["model"] = charger_model["model_name"]
+    cp_doc["protocol"] = charger_model.get("protocol", "OCPP 1.6")
+    cp_doc["charger_type"] = charger_model.get("charger_type", "DC")
+    cp_doc["max_power_kw"] = charger_model.get("max_power_kw", 0)
+    cp_doc["max_voltage_v"] = charger_model.get("max_voltage_v", 0)
+    
+    # Firmware: use override if present, otherwise use model default
+    cp_doc["firmware_version"] = cp_doc.get("firmware_version_override") or charger_model.get("default_firmware_version") or "Not Set"
+    
+    # Connectors: derive from model's connector_configs
+    cp_doc["connectors"] = [
+        {
+            "connector_id": config["connector_number"],
+            "connector_type": config["connector_type"],
+            "power_kw": config["max_power_kw"],
+            "status": "AVAILABLE"  # Default status, will be updated by OCPP
+        }
+        for config in charger_model.get("connector_configs", [])
+    ]
+    
+    return cp_doc
+
+
 @api_router.get("/charge-points", response_model=List[ChargePointResponse])
 async def get_charge_points(
     location_id: Optional[str] = None,
@@ -784,7 +822,7 @@ async def get_charge_points(
     limit: int = 100,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Get all charge points with optional filters"""
+    """Get all charge points with enriched data from models"""
     query = {}
     
     # Add location filter
@@ -799,23 +837,34 @@ async def get_charge_points(
     if search:
         query["$or"] = [
             {"name": {"$regex": search, "$options": "i"}},
-            {"charge_point_id": {"$regex": search, "$options": "i"}},
-            {"vendor": {"$regex": search, "$options": "i"}},
-            {"model": {"$regex": search, "$options": "i"}}
+            {"charge_point_id": {"$regex": search, "$options": "i"}}
         ]
     
     charge_points = await db.charge_points.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
     
-    # Convert ISO strings back to datetime
+    # Enrich each charge point
+    enriched_cps = []
     for cp in charge_points:
-        if isinstance(cp.get("created_at"), str):
-            cp["created_at"] = datetime.fromisoformat(cp["created_at"])
-        if isinstance(cp.get("updated_at"), str):
-            cp["updated_at"] = datetime.fromisoformat(cp["updated_at"])
-        if cp.get("last_heartbeat") and isinstance(cp["last_heartbeat"], str):
-            cp["last_heartbeat"] = datetime.fromisoformat(cp["last_heartbeat"])
+        try:
+            enriched_cp = await enrich_charge_point(cp)
+            
+            # Convert ISO strings back to datetime
+            if isinstance(enriched_cp.get("created_at"), str):
+                enriched_cp["created_at"] = datetime.fromisoformat(enriched_cp["created_at"])
+            if isinstance(enriched_cp.get("updated_at"), str):
+                enriched_cp["updated_at"] = datetime.fromisoformat(enriched_cp["updated_at"])
+            if enriched_cp.get("last_heartbeat") and isinstance(enriched_cp["last_heartbeat"], str):
+                enriched_cp["last_heartbeat"] = datetime.fromisoformat(enriched_cp["last_heartbeat"])
+            if enriched_cp.get("go_live_date") and isinstance(enriched_cp["go_live_date"], str):
+                enriched_cp["go_live_date"] = datetime.fromisoformat(enriched_cp["go_live_date"])
+            
+            enriched_cps.append(enriched_cp)
+        except HTTPException as e:
+            # Skip CPs with missing model/oem references
+            logger.warning(f"Skipping CP {cp.get('charge_point_id')}: {e.detail}")
+            continue
     
-    return charge_points
+    return enriched_cps
 
 
 @api_router.get("/locations/{location_id}/charge-points", response_model=List[ChargePointResponse])
