@@ -915,40 +915,55 @@ async def get_charge_point(
 
 
 @api_router.post("/charge-points", response_model=ChargePointResponse)
+@api_router.post("/charge-points", response_model=ChargePointResponse)
 async def create_charge_point(
     charge_point_data: ChargePointCreate,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Create a new charge point"""
+    """Create a new charge point (reference-based)"""
     # Verify location exists
     location = await db.charging_locations.find_one({"id": charge_point_data.location_id}, {"_id": 0})
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
+    
+    # Verify OEM exists
+    oem = await db.oems.find_one({"id": charge_point_data.oem_id}, {"_id": 0})
+    if not oem:
+        raise HTTPException(status_code=404, detail="OEM not found")
+    
+    # Verify ChargerModel exists
+    charger_model = await db.charger_models.find_one({"id": charge_point_data.charger_model_id}, {"_id": 0})
+    if not charger_model:
+        raise HTTPException(status_code=404, detail="Charger model not found")
     
     # Check if charge_point_id already exists
     existing_cp = await db.charge_points.find_one({"charge_point_id": charge_point_data.charge_point_id}, {"_id": 0})
     if existing_cp:
         raise HTTPException(status_code=400, detail="Charge Point ID already exists")
     
-    # Create charge point object
-    charge_point = ChargePoint(
-        charge_point_id=charge_point_data.charge_point_id,
-        name=charge_point_data.name,
-        location_id=charge_point_data.location_id,
-        vendor=charge_point_data.vendor,
-        model=charge_point_data.model,
-        serial_number=charge_point_data.serial_number,
-        firmware_version=charge_point_data.firmware_version,
-        connectors=[c.model_dump() for c in charge_point_data.connectors]
-    )
+    # Create charge point (store only references and instance-specific data)
+    cp_id = str(uuid.uuid4())
+    charge_point_doc = {
+        "id": cp_id,
+        "charge_point_id": charge_point_data.charge_point_id,
+        "name": charge_point_data.name,
+        "location_id": charge_point_data.location_id,
+        "oem_id": charge_point_data.oem_id,
+        "charger_model_id": charge_point_data.charger_model_id,
+        "serial_number": charge_point_data.serial_number,
+        "firmware_version_override": charge_point_data.firmware_version,
+        "websocket_id": charge_point_data.websocket_id,
+        "go_live_date": charge_point_data.go_live_date.isoformat() if charge_point_data.go_live_date else None,
+        "status": "UNAVAILABLE",  # Default to UNAVAILABLE until OCPP StatusNotification
+        "is_online": False,
+        "last_heartbeat": None,
+        "total_energy_kwh": 0.0,
+        "total_sessions": 0,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
     
-    # Store in database
-    charge_point_dict = charge_point.model_dump()
-    charge_point_dict['created_at'] = charge_point_dict['created_at'].isoformat()
-    charge_point_dict['updated_at'] = charge_point_dict['updated_at'].isoformat()
-    if charge_point_dict.get('last_heartbeat'):
-        charge_point_dict['last_heartbeat'] = charge_point_dict['last_heartbeat'].isoformat()
-    await db.charge_points.insert_one(charge_point_dict)
+    await db.charge_points.insert_one(charge_point_doc)
     
     # Update location's total_charge_points count
     await db.charging_locations.update_one(
@@ -956,7 +971,15 @@ async def create_charge_point(
         {"$inc": {"total_charge_points": 1}}
     )
     
-    return ChargePointResponse(**charge_point.model_dump())
+    # Fetch and enrich for response
+    created_cp = await db.charge_points.find_one({"id": cp_id}, {"_id": 0})
+    enriched_cp = await enrich_charge_point(created_cp)
+    
+    # Convert ISO strings
+    enriched_cp["created_at"] = datetime.fromisoformat(enriched_cp["created_at"])
+    enriched_cp["updated_at"] = datetime.fromisoformat(enriched_cp["updated_at"])
+    
+    return ChargePointResponse(**enriched_cp)
 
 
 @api_router.put("/charge-points/{charge_point_id}", response_model=ChargePointResponse)
