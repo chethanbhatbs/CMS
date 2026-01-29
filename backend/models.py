@@ -160,6 +160,7 @@ class ChargingLocation(BaseModel):
     country: str
     latitude: float
     longitude: float
+    image_url: Optional[str] = None  # Location image
     franchise_id: Optional[str] = None
     total_charge_points: int = 0
     status: str = "ACTIVE"
