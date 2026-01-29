@@ -267,6 +267,117 @@ class EVChargingCMSAPITester:
             self.log_test("Invalid Token Protection", False, str(e))
             return False
 
+    def test_get_oems(self):
+        """Test fetching OEMs"""
+        if not self.token:
+            self.log_test("Get OEMs", False, "No token available")
+            return False
+            
+        try:
+            headers = {"Authorization": f"Bearer {self.token}"}
+            response = requests.get(f"{self.base_url}/oems", headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                oems = response.json()
+                if isinstance(oems, list):
+                    self.log_test("Get OEMs", True, f"Found {len(oems)} OEMs")
+                    return True
+                else:
+                    self.log_test("Get OEMs", False, "Response is not a list")
+                    return False
+            else:
+                self.log_test("Get OEMs", False, f"Status: {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_test("Get OEMs", False, str(e))
+            return False
+
+    def test_create_oem(self):
+        """Test creating a new OEM"""
+        if not self.token:
+            self.log_test("Create OEM", False, "No token available")
+            return False
+            
+        try:
+            oem_data = {
+                "oem_name": f"Test OEM {datetime.now().strftime('%H%M%S')}",
+                "website": "https://testoem.com",
+                "support_email": "support@testoem.com",
+                "protocol": "OCPP 1.6",
+                "charger_type": "DC",
+                "max_power_kw": 150.0,
+                "max_voltage_v": 480.0
+            }
+            
+            headers = {"Authorization": f"Bearer {self.token}"}
+            response = requests.post(f"{self.base_url}/oems", json=oem_data, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if (result.get('oem_name') == oem_data['oem_name'] and 
+                    result.get('max_power_kw') == oem_data['max_power_kw']):
+                    self.log_test("Create OEM", True)
+                    return True
+                else:
+                    self.log_test("Create OEM", False, "Invalid response data")
+                    return False
+            else:
+                self.log_test("Create OEM", False, f"Status: {response.status_code}, Response: {response.text}")
+                return False
+        except Exception as e:
+            self.log_test("Create OEM", False, str(e))
+            return False
+
+    def test_get_locations(self):
+        """Test fetching charging locations"""
+        if not self.token:
+            self.log_test("Get Locations", False, "No token available")
+            return False
+            
+        try:
+            headers = {"Authorization": f"Bearer {self.token}"}
+            response = requests.get(f"{self.base_url}/locations", headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                locations = response.json()
+                if isinstance(locations, list):
+                    self.log_test("Get Locations", True, f"Found {len(locations)} locations")
+                    return True
+                else:
+                    self.log_test("Get Locations", False, "Response is not a list")
+                    return False
+            else:
+                self.log_test("Get Locations", False, f"Status: {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_test("Get Locations", False, str(e))
+            return False
+
+    def test_get_charge_points(self):
+        """Test fetching charge points"""
+        if not self.token:
+            self.log_test("Get Charge Points", False, "No token available")
+            return False
+            
+        try:
+            headers = {"Authorization": f"Bearer {self.token}"}
+            response = requests.get(f"{self.base_url}/charge-points", headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                charge_points = response.json()
+                if isinstance(charge_points, list):
+                    self.log_test("Get Charge Points", True, f"Found {len(charge_points)} charge points")
+                    return True
+                else:
+                    self.log_test("Get Charge Points", False, "Response is not a list")
+                    return False
+            else:
+                self.log_test("Get Charge Points", False, f"Status: {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_test("Get Charge Points", False, str(e))
+            return False
+
     def run_all_tests(self):
         """Run all API tests"""
         print("🚀 Starting EV Charging CMS API Tests\n")
