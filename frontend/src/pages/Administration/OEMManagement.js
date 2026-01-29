@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +20,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Building2 } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Building2, MoreVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,16 +34,18 @@ import { useAuth } from '@/contexts/AuthContext';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const OEMDialog = ({ isOpen, onClose, onSubmit, formData, onFieldChange }) => {
+const OEMDialog = ({ isOpen, onClose, onSubmit, title, formData, onFieldChange, isEdit }) => {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-lg" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Add OEM</DialogTitle>
-          <DialogDescription>Add a new charger manufacturer</DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            {isEdit ? 'Update OEM details' : 'Add a new charger manufacturer'}
+          </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-4 py-4">
-          <div className="col-span-2">
+        <div className="space-y-4 py-4">
+          <div>
             <Label htmlFor="oem_name">OEM Name *</Label>
             <Input
               id="oem_name"
@@ -69,51 +76,6 @@ const OEMDialog = ({ isOpen, onClose, onSubmit, formData, onFieldChange }) => {
               data-testid="oem-email-input"
             />
           </div>
-          <div>
-            <Label htmlFor="protocol">Protocol *</Label>
-            <Select value={formData.protocol} onValueChange={(value) => onFieldChange('protocol', value)}>
-              <SelectTrigger data-testid="protocol-select">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="OCPP 1.6">OCPP 1.6</SelectItem>
-                <SelectItem value="OCPP 2.0.1">OCPP 2.0.1</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="charger_type">Charger Type *</Label>
-            <Select value={formData.charger_type} onValueChange={(value) => onFieldChange('charger_type', value)}>
-              <SelectTrigger data-testid="charger-type-select">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="AC">AC</SelectItem>
-                <SelectItem value="DC">DC</SelectItem>
-                <SelectItem value="HYBRID">Hybrid</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="max_power_kw">Max Power (kW) *</Label>
-            <Input
-              id="max_power_kw"
-              value={formData.max_power_kw}
-              onChange={(e) => onFieldChange('max_power_kw', e.target.value)}
-              placeholder="150"
-              data-testid="oem-power-input"
-            />
-          </div>
-          <div>
-            <Label htmlFor="max_voltage_v">Max Voltage (V) *</Label>
-            <Input
-              id="max_voltage_v"
-              value={formData.max_voltage_v}
-              onChange={(e) => onFieldChange('max_voltage_v', e.target.value)}
-              placeholder="480"
-              data-testid="oem-voltage-input"
-            />
-          </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose} data-testid="cancel-oem-btn">
@@ -122,10 +84,10 @@ const OEMDialog = ({ isOpen, onClose, onSubmit, formData, onFieldChange }) => {
           <Button
             type="button"
             onClick={onSubmit}
-            disabled={!formData.oem_name || !formData.protocol || !formData.charger_type || !formData.max_power_kw || !formData.max_voltage_v}
+            disabled={!formData.oem_name}
             data-testid="submit-oem-btn"
           >
-            Add OEM
+            {isEdit ? 'Update OEM' : 'Add OEM'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -138,14 +100,12 @@ const OEMManagement = () => {
   const [oems, setOems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedOEM, setSelectedOEM] = useState(null);
   const [formData, setFormData] = useState({
     oem_name: '',
     website: '',
     support_email: '',
-    protocol: 'OCPP 1.6',
-    charger_type: 'DC',
-    max_power_kw: '',
-    max_voltage_v: '',
   });
 
   useEffect(() => {
@@ -176,22 +136,12 @@ const OEMManagement = () => {
       oem_name: '',
       website: '',
       support_email: '',
-      protocol: 'OCPP 1.6',
-      charger_type: 'DC',
-      max_power_kw: '',
-      max_voltage_v: '',
     });
   };
 
   const handleAddOEM = async () => {
     try {
-      const payload = {
-        ...formData,
-        max_power_kw: parseFloat(formData.max_power_kw),
-        max_voltage_v: parseFloat(formData.max_voltage_v),
-      };
-
-      await axios.post(`${API}/oems`, payload, {
+      await axios.post(`${API}/oems`, formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -209,12 +159,63 @@ const OEMManagement = () => {
     }
   };
 
+  const handleEditOEM = async () => {
+    try {
+      await axios.put(`${API}/oems/${selectedOEM.id}`, formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      toast.success('OEM updated successfully!', {
+        description: `${formData.oem_name} has been updated`,
+      });
+      setIsEditDialogOpen(false);
+      setSelectedOEM(null);
+      resetForm();
+      fetchOEMs();
+    } catch (error) {
+      console.error('Error updating OEM:', error);
+      toast.error('Failed to update OEM', {
+        description: error.response?.data?.detail || 'An error occurred',
+      });
+    }
+  };
+
+  const handleDeleteOEM = async (oemId, oemName) => {
+    if (!window.confirm(`Are you sure you want to delete "${oemName}"?`)) return;
+
+    try {
+      await axios.delete(`${API}/oems/${oemId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      toast.success('OEM deleted successfully!', {
+        description: `${oemName} has been removed`,
+      });
+      fetchOEMs();
+    } catch (error) {
+      console.error('Error deleting OEM:', error);
+      toast.error('Failed to delete OEM', {
+        description: error.response?.data?.detail || 'An error occurred',
+      });
+    }
+  };
+
+  const openEditDialog = (oem) => {
+    setSelectedOEM(oem);
+    setFormData({
+      oem_name: oem.oem_name,
+      website: oem.website || '',
+      support_email: oem.support_email || '',
+    });
+    setIsEditDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6" data-testid="oem-management-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-heading font-bold text-slate-900">OEM Management</h1>
-          <p className="text-slate-600 mt-1">Manage charger manufacturers and their models</p>
+          <p className="text-slate-600 mt-1">Manage charger manufacturers</p>
         </div>
         <Button onClick={() => setIsAddDialogOpen(true)} data-testid="add-oem-btn">
           <Plus className="mr-2 h-4 w-4" />
@@ -243,27 +244,49 @@ const OEMManagement = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>OEM Name</TableHead>
-                  <TableHead>Protocol</TableHead>
-                  <TableHead>Charger Type</TableHead>
-                  <TableHead>Max Power (kW)</TableHead>
-                  <TableHead>Max Voltage (V)</TableHead>
+                  <TableHead>Website</TableHead>
                   <TableHead>Support Email</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {oems.map((oem) => (
                   <TableRow key={oem.id} data-testid={`oem-row-${oem.id}`}>
                     <TableCell className="font-medium">{oem.oem_name}</TableCell>
-                    <TableCell>{oem.protocol}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{oem.charger_type}</Badge>
+                    <TableCell className="text-sm text-slate-600">
+                      {oem.website ? (
+                        <a href={oem.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                          {oem.website}
+                        </a>
+                      ) : ('—')}
                     </TableCell>
-                    <TableCell>{oem.max_power_kw} kW</TableCell>
-                    <TableCell>{oem.max_voltage_v} V</TableCell>
                     <TableCell className="text-sm text-slate-600">{oem.support_email || '—'}</TableCell>
                     <TableCell>
                       <Badge variant="default">{oem.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" data-testid={`oem-actions-${oem.id}`}>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditDialog(oem)} data-testid="edit-oem-btn">
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteOEM(oem.id, oem.oem_name)}
+                            className="text-red-600"
+                            data-testid="delete-oem-btn"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -280,8 +303,24 @@ const OEMManagement = () => {
           resetForm();
         }}
         onSubmit={handleAddOEM}
+        title="Add OEM"
         formData={formData}
         onFieldChange={handleFieldChange}
+        isEdit={false}
+      />
+
+      <OEMDialog
+        isOpen={isEditDialogOpen}
+        onClose={() => {
+          setIsEditDialogOpen(false);
+          setSelectedOEM(null);
+          resetForm();
+        }}
+        onSubmit={handleEditOEM}
+        title="Edit OEM"
+        formData={formData}
+        onFieldChange={handleFieldChange}
+        isEdit={true}
       />
     </div>
   );
