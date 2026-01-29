@@ -116,7 +116,11 @@ const ChargePointDetails = () => {
         <div className="flex-1">
           <h1 className="text-3xl font-heading font-bold text-slate-900">{chargePoint.name}</h1>
           <p className="text-slate-600 mt-1">
-            {location?.name} • {chargePoint.charge_point_id}
+            <Link to={`/charging-locations/${chargePoint.location_id}`} className="text-primary hover:underline">
+              {location?.name}
+            </Link>
+            {' • '}
+            {chargePoint.charge_point_id}
           </p>
         </div>
         <Badge className={`text-lg px-4 py-2 ${getStatusColor(chargePoint.status)}`}>
