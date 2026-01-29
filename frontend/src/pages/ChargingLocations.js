@@ -505,8 +505,22 @@ const ChargingLocations = () => {
     setIsEditDialogOpen(true);
   };
 
+  const totalPages = Math.ceil(locations.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLocations = locations.slice(startIndex, endIndex);
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
+
   return (
     <div className="space-y-6" data-testid="charging-locations-page">
+      <Breadcrumb items={[
+        { label: 'Charging Network', href: null },
+        { label: 'Charging Locations', href: null }
+      ]} />
+      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-heading font-bold text-slate-900">Charging Locations</h1>
