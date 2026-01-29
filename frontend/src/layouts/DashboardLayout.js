@@ -332,8 +332,22 @@ const DashboardLayout = () => {
               </Button>
             </div>
 
+            {/* Global Menu Search */}
+            <div className="px-4 py-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
+                <Input
+                  placeholder="Search menu..."
+                  className="pl-9 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 h-9"
+                  value={menuSearchQuery}
+                  onChange={(e) => setMenuSearchQuery(e.target.value)}
+                  data-testid="menu-search-mobile-input"
+                />
+              </div>
+            </div>
+
             {/* Navigation */}
-            <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
+            <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} searchQuery={menuSearchQuery} />
           </aside>
         </div>
       )}
