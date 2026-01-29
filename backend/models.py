@@ -89,9 +89,11 @@ class User(BaseModel):
     email: EmailStr
     password_hash: str
     full_name: str
+    phone: Optional[str] = None
     role: UserRole = UserRole.OPERATOR
     franchise_id: Optional[str] = None
     is_active: bool = True
+    email_verified: bool = False
     last_login: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -102,9 +104,11 @@ class UserResponse(BaseModel):
     id: str
     email: str
     full_name: str
+    phone: Optional[str] = None
     role: str
     franchise_id: Optional[str] = None
     is_active: bool
+    email_verified: bool
     last_login: Optional[datetime] = None
     created_at: datetime
 
