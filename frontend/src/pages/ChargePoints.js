@@ -273,13 +273,13 @@ const ChargePoints = () => {
   }, []);
 
   useEffect(() => {
-    if (formData.charger_model_id) {
-      const model = allChargerModels.find(m => m.id === formData.charger_model_id);
-      setSelectedModelDetails(model);
+    if (formData.oem_id) {
+      const filtered = allChargerModels.filter(m => m.oem_id === formData.oem_id);
+      setFilteredChargerModels(filtered);
     } else {
-      setSelectedModelDetails(null);
+      setFilteredChargerModels([]);
     }
-  }, [formData.charger_model_id, allChargerModels]);
+  }, [formData.oem_id, allChargerModels]);
 
   const fetchLocations = async () => {
     try {
