@@ -197,8 +197,8 @@ const ChargingLocations = () => {
     if (!isOpen) return null;
     
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+        <DialogContent className="max-w-2xl" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>
@@ -296,10 +296,11 @@ const ChargingLocations = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={onClose} data-testid="cancel-location-btn">
+            <Button type="button" variant="outline" onClick={onClose} data-testid="cancel-location-btn">
               Cancel
             </Button>
             <Button
+              type="button"
               onClick={onSubmit}
               disabled={!formData.name || !formData.address || !formData.city || !formData.state || !formData.postal_code || !formData.country}
               data-testid="submit-location-btn"
