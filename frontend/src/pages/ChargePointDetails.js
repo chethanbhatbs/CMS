@@ -104,7 +104,6 @@ const ChargePointDetails = () => {
   return (
     <div className="space-y-6" data-testid="chargepoint-details-page">
       <Breadcrumb items={[
-        { label: 'Charging Network', href: null },
         { label: 'Charge Points', href: '/charge-points' },
         { label: chargePoint.charge_point_id, href: null }
       ]} />
