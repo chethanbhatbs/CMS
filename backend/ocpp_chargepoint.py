@@ -1,4 +1,4 @@
-"""OCPP Charge Point Handler - Handles OCPP 1.6 messages"""
+"""OCPP Charge Point Handler - Enhanced with validation and error handling"""
 
 import asyncio
 from datetime import datetime, timezone
@@ -7,6 +7,9 @@ from ocpp.v16 import call_result
 from ocpp.v16.enums import RegistrationStatus, ChargePointStatus, ChargePointErrorCode
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
@@ -14,31 +17,102 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'test_database')]
 
 class ChargePoint(CP):
-    """OCPP 1.6 Charge Point Handler"""
+    """OCPP 1.6 Charge Point Handler with validation"""
     
     async def on_boot_notification(self, charge_point_vendor, charge_point_model, **kwargs):
-        """Handle BootNotification from charge point"""
-        print(f"BootNotification from {self.id}: {charge_point_vendor} {charge_point_model}")
+        """Handle BootNotification from charge point
         
-        # Update charge point in database
+        Validates:
+        - CP exists in database
+        - Vendor/Model match ChargerModel (warning if mismatch)
+        - Unknown CPs are rejected
+        """
+        logger.info(f"BootNotification from {self.id}: {charge_point_vendor} {charge_point_model}")
+        
+        # Check if CP exists in database
+        cp_record = await db.charge_points.find_one({"charge_point_id": self.id}, {"_id": 0})
+        
+        if not cp_record:
+            # Unknown/unregistered CP
+            logger.warning(f"REJECTED: Unknown CP {self.id} attempted to connect")
+            
+            await db.charger_logs.insert_one({
+                "charge_point_id": self.id,
+                "log_level": "ERROR",
+                "message": f"Boot Notification REJECTED: Unknown CP {self.id}",
+                "action": "BootNotification",
+                "metadata": {
+                    "vendor": charge_point_vendor,
+                    "model": charge_point_model,
+                    "reason": "CP not registered in CMS",
+                    **kwargs
+                },
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            
+            return call_result.BootNotificationPayload(
+                current_time=datetime.now(timezone.utc).isoformat(),
+                interval=0,  # Don't heartbeat
+                status=RegistrationStatus.rejected
+            )
+        
+        # Fetch ChargerModel to validate vendor/model
+        charger_model = await db.charger_models.find_one(
+            {"id": cp_record.get("charger_model_id")}, 
+            {"_id": 0}
+        )
+        
+        if charger_model:
+            # Get OEM name
+            oem = await db.oems.find_one({"id": charger_model.get("oem_id")}, {"_id": 0})
+            expected_vendor = oem.get("oem_name") if oem else "Unknown"
+            expected_model = charger_model.get("model_name", "Unknown")
+            
+            # Validate vendor/model match
+            if (charge_point_vendor != expected_vendor or 
+                charge_point_model != expected_model):
+                logger.warning(
+                    f"MISMATCH: {self.id} reports {charge_point_vendor}/{charge_point_model} "
+                    f"but CMS expects {expected_vendor}/{expected_model}"
+                )
+                
+                await db.charger_logs.insert_one({
+                    "charge_point_id": self.id,
+                    "log_level": "WARNING",
+                    "message": f"Vendor/Model mismatch detected",
+                    "action": "BootNotification",
+                    "metadata": {
+                        "reported_vendor": charge_point_vendor,
+                        "reported_model": charge_point_model,
+                        "expected_vendor": expected_vendor,
+                        "expected_model": expected_model,
+                        **kwargs
+                    },
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                })
+        
+        # Accept connection and update database
         await db.charge_points.update_one(
             {"charge_point_id": self.id},
             {"$set": {
                 "is_online": True,
                 "last_heartbeat": datetime.now(timezone.utc).isoformat(),
+                "websocket_id": str(id(self)),
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }}
         )
         
-        # Log boot notification
+        # Log successful boot
         await db.charger_logs.insert_one({
             "charge_point_id": self.id,
             "log_level": "INFO",
-            "message": f"Boot Notification: {charge_point_vendor} {charge_point_model}",
+            "message": f"Boot Notification ACCEPTED: {charge_point_vendor} {charge_point_model}",
             "action": "BootNotification",
             "metadata": kwargs,
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
+        
+        logger.info(f"ACCEPTED: {self.id} registered successfully")
         
         return call_result.BootNotificationPayload(
             current_time=datetime.now(timezone.utc).isoformat(),
@@ -48,7 +122,7 @@ class ChargePoint(CP):
     
     async def on_heartbeat(self, **kwargs):
         """Handle Heartbeat from charge point"""
-        print(f"Heartbeat from {self.id}")
+        logger.debug(f"Heartbeat from {self.id}")
         
         # Update last heartbeat
         await db.charge_points.update_one(
@@ -64,8 +138,17 @@ class ChargePoint(CP):
         )
     
     async def on_status_notification(self, connector_id, error_code, status, **kwargs):
-        """Handle StatusNotification from charge point"""
-        print(f"StatusNotification from {self.id} Connector {connector_id}: {status}")
+        """Handle StatusNotification from charge point
+        
+        Status Logic (OCPP-Correct):
+        1. Store connector-level status
+        2. Derive CP status:
+           - FAULTED: if ANY connector faulted
+           - AVAILABLE: if ANY connector available
+           - OCCUPIED: if all occupied/charging OR (occupied + unknown)
+           - UNAVAILABLE: otherwise (including all unknown)
+        """
+        logger.info(f"StatusNotification from {self.id} Connector {connector_id}: {status}")
         
         # Store connector status
         await db.connector_status.update_one(
@@ -81,27 +164,30 @@ class ChargePoint(CP):
             upsert=True
         )
         
-        # Derive overall charge point status from all connectors
+        # Derive overall charge point status from ALL connectors
         connector_statuses = await db.connector_status.find(
             {"charge_point_id": self.id}
         ).to_list(10)
         
-        # Status logic:
-        # - If any connector is Faulted -> FAULTED
-        # - If any connector is Available -> AVAILABLE
-        # - If all are Charging/Preparing -> OCCUPIED
-        # - Otherwise -> UNAVAILABLE
-        statuses = [c["status"] for c in connector_statuses]
-        if "Faulted" in statuses:
-            cp_status = "FAULTED"
-        elif "Available" in statuses:
-            cp_status = "AVAILABLE"
-        elif all(s in ["Charging", "Preparing"] for s in statuses):
-            cp_status = "OCCUPIED"
-        else:
+        if not connector_statuses:
             cp_status = "UNAVAILABLE"
+        else:
+            statuses = [c["status"] for c in connector_statuses]
+            
+            # FAULTED has highest priority
+            if "Faulted" in statuses:
+                cp_status = "FAULTED"
+            # Any available makes CP available
+            elif "Available" in statuses:
+                cp_status = "AVAILABLE"
+            # All busy (Charging/Preparing/Finishing/Reserved)
+            elif all(s in ["Charging", "Preparing", "Finishing", "Reserved"] for s in statuses):
+                cp_status = "OCCUPIED"
+            # Mixed busy + unknown or all unavailable
+            else:
+                cp_status = "UNAVAILABLE"
         
-        # Update charge point status
+        # Update charge point status (derived, not stored from message directly)
         await db.charge_points.update_one(
             {"charge_point_id": self.id},
             {"$set": {
@@ -111,20 +197,26 @@ class ChargePoint(CP):
         )
         
         # Log status notification
+        log_level = "INFO"
+        if error_code != ChargePointErrorCode.no_error:
+            log_level = "WARNING" if "Faulted" in statuses else "ERROR"
+        
         await db.charger_logs.insert_one({
             "charge_point_id": self.id,
-            "log_level": "INFO" if error_code == ChargePointErrorCode.no_error else "WARNING",
-            "message": f"Connector {connector_id} status: {status}",
+            "log_level": log_level,
+            "message": f"Connector {connector_id} status: {status} (CP status derived: {cp_status})",
             "action": "StatusNotification",
             "metadata": {"connector_id": connector_id, "error_code": error_code, **kwargs},
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
+        logger.info(f"CP {self.id} status derived as {cp_status} from connectors")
+        
         return call_result.StatusNotificationPayload()
     
     async def on_start_transaction(self, connector_id, id_tag, meter_start, timestamp, **kwargs):
         """Handle StartTransaction from charge point"""
-        print(f"StartTransaction from {self.id} Connector {connector_id}")
+        logger.info(f"StartTransaction from {self.id} Connector {connector_id}, ID Tag: {id_tag}")
         
         transaction_id = int(datetime.now(timezone.utc).timestamp() * 1000)
         
@@ -136,6 +228,8 @@ class ChargePoint(CP):
             "rfid_tag": id_tag,
             "start_time": timestamp,
             "start_meter_kwh": meter_start / 1000,  # Convert Wh to kWh
+            "current_meter_kwh": meter_start / 1000,
+            "energy_kwh": 0.0,
             "status": "ACTIVE",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat()
@@ -147,6 +241,8 @@ class ChargePoint(CP):
             {"$inc": {"total_sessions": 1}}
         )
         
+        logger.info(f"Session {transaction_id} started for {self.id}")
+        
         return call_result.StartTransactionPayload(
             transaction_id=transaction_id,
             id_tag_info={'status': 'Accepted'}
@@ -154,12 +250,14 @@ class ChargePoint(CP):
     
     async def on_stop_transaction(self, meter_stop, timestamp, transaction_id, **kwargs):
         """Handle StopTransaction from charge point"""
-        print(f"StopTransaction from {self.id}: Transaction {transaction_id}")
+        logger.info(f"StopTransaction from {self.id}: Transaction {transaction_id}")
         
-        # Update session
+        # Find session
         session = await db.charging_sessions.find_one({"session_id": str(transaction_id)})
+        
         if session:
-            energy_kwh = (meter_stop - (session["start_meter_kwh"] * 1000)) / 1000
+            start_meter = session.get("start_meter_kwh", 0) * 1000  # Convert back to Wh
+            energy_kwh = (meter_stop - start_meter) / 1000
             
             await db.charging_sessions.update_one(
                 {"session_id": str(transaction_id)},
@@ -167,6 +265,7 @@ class ChargePoint(CP):
                     "end_time": timestamp,
                     "end_meter_kwh": meter_stop / 1000,
                     "energy_kwh": energy_kwh,
+                    "stop_reason": kwargs.get("reason", ""),
                     "status": "COMPLETED",
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }}
@@ -177,10 +276,36 @@ class ChargePoint(CP):
                 {"charge_point_id": self.id},
                 {"$inc": {"total_energy_kwh": energy_kwh}}
             )
+            
+            logger.info(f"Session {transaction_id} completed: {energy_kwh:.2f} kWh")
+        else:
+            logger.warning(f"Session {transaction_id} not found for StopTransaction")
         
         return call_result.StopTransactionPayload()
     
-    async def on_meter_values(self, connector_id, meter_value, **kwargs):
-        """Handle MeterValues from charge point"""
-        # Log meter values (optional, can be frequent)
+    async def on_meter_values(self, connector_id, meter_value, transaction_id=None, **kwargs):
+        """Handle MeterValues from charge point
+        
+        Links to transaction_id and connector_id
+        Updates current_meter_kwh in active session
+        """
+        logger.debug(f"MeterValues from {self.id} Connector {connector_id}")
+        
+        # Extract power and energy from meter_value
+        if transaction_id:
+            # Update active session with latest meter value
+            for sampled_value in meter_value:
+                for sample in sampled_value.get('sampled_value', []):
+                    if sample.get('measurand') == 'Energy.Active.Import.Register':
+                        current_kwh = float(sample.get('value', 0)) / 1000
+                        
+                        await db.charging_sessions.update_one(
+                            {"session_id": str(transaction_id), "status": "ACTIVE"},
+                            {"$set": {
+                                "current_meter_kwh": current_kwh,
+                                "updated_at": datetime.now(timezone.utc).isoformat()
+                            }}
+                        )
+        
+        # Optionally log meter values (can be frequent, so only log significant changes)
         return call_result.MeterValuesPayload()
