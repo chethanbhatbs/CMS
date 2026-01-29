@@ -931,13 +931,6 @@ async def get_charge_point(
         enriched_cp["go_live_date"] = datetime.fromisoformat(enriched_cp["go_live_date"])
     
     return enriched_cp
-        charge_point["created_at"] = datetime.fromisoformat(charge_point["created_at"])
-    if isinstance(charge_point.get("updated_at"), str):
-        charge_point["updated_at"] = datetime.fromisoformat(charge_point["updated_at"])
-    if charge_point.get("last_heartbeat") and isinstance(charge_point["last_heartbeat"], str):
-        charge_point["last_heartbeat"] = datetime.fromisoformat(charge_point["last_heartbeat"])
-    
-    return charge_point
 
 
 @api_router.post("/charge-points", response_model=ChargePointResponse)
