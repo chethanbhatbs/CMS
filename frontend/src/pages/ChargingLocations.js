@@ -528,6 +528,7 @@ const ChargingLocations = () => {
       country: location.country,
       latitude: location.latitude ? location.latitude.toString() : '',
       longitude: location.longitude ? location.longitude.toString() : '',
+      image_url: location.image_url || '',
     });
     setIsEditDialogOpen(true);
   };
