@@ -308,10 +308,10 @@ class ChargingLocationResponse(BaseModel):
     state: str
     postal_code: str
     country: str
-    latitude: Optional[float]
-    longitude: Optional[float]
-    image_url: Optional[str]
-    franchise_id: Optional[str]
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    image_url: Optional[str] = None
+    franchise_id: Optional[str] = None
     total_charge_points: int
     status: str
     created_at: datetime
