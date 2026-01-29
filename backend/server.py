@@ -986,6 +986,16 @@ async def create_charge_point(
     
     await db.charge_points.insert_one(charge_point_doc)
     
+    # Initialize connector status records (all UNKNOWN until first StatusNotification)
+    for config in charger_model.get("connector_configs", []):
+        await db.connector_status.insert_one({
+            "charge_point_id": charge_point_data.charge_point_id,
+            "connector_id": config["connector_number"],
+            "status": "Unknown",  # OCPP status Unknown
+            "error_code": "NoError",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+    
     # Update location's total_charge_points count
     await db.charging_locations.update_one(
         {"id": charge_point_data.location_id},
