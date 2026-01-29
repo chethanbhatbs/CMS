@@ -63,6 +63,7 @@ function App() {
             
             {/* Charging Network */}
             <Route path="charging-locations" element={<ChargingLocations />} />
+            <Route path="charging-locations/:id" element={<LocationDetails />} />
             <Route path="charge-points" element={<ChargePoints />} />
             <Route path="charge-points/:id" element={<ChargePointDetails />} />
             
