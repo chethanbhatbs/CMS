@@ -1124,7 +1124,7 @@ async def remote_start_transaction(
     connector_id: int = 1,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    \"\"\"Send RemoteStartTransaction command to charge point\"\"\"
+    """Send RemoteStartTransaction command to charge point"""
     from ocpp.v16 import call as ocpp_call
     
     # Get charge point from registry
@@ -1160,7 +1160,7 @@ async def remote_stop_transaction(
     transaction_id: int,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    \"\"\"Send RemoteStopTransaction command to charge point\"\"\"
+    """Send RemoteStopTransaction command to charge point"""
     from ocpp.v16 import call as ocpp_call
     
     cp = registry.get(cp_id)
@@ -1193,7 +1193,7 @@ async def reset_charge_point(
     reset_type: str = "Soft",
     current_user: UserResponse = Depends(get_current_user)
 ):
-    \"\"\"Send Reset command to charge point\"\"\"
+    """Send Reset command to charge point"""
     from ocpp.v16 import call as ocpp_call
     from ocpp.v16.enums import ResetType
     
@@ -1227,7 +1227,7 @@ async def change_availability(
     availability_type: str,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    \"\"\"Send ChangeAvailability command to charge point\"\"\"
+    """Send ChangeAvailability command to charge point"""
     from ocpp.v16 import call as ocpp_call
     from ocpp.v16.enums import AvailabilityType
     
@@ -1261,7 +1261,7 @@ async def change_availability(
 async def get_connected_charge_points(
     current_user: UserResponse = Depends(get_current_user)
 ):
-    \"\"\"Get list of currently connected charge points\"\"\"
+    """Get list of currently connected charge points"""
     connected_cps = registry.get_all()
     return {
         "connected_count": registry.count(),
