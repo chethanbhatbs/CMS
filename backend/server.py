@@ -875,7 +875,7 @@ async def get_charge_points_by_location(
     location_id: str,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Get all charge points for a specific location"""
+    """Get all charge points for a specific location with enriched data"""
     # Verify location exists
     location = await db.charging_locations.find_one({"id": location_id}, {"_id": 0})
     if not location:
@@ -883,16 +883,27 @@ async def get_charge_points_by_location(
     
     charge_points = await db.charge_points.find({"location_id": location_id}, {"_id": 0}).to_list(100)
     
-    # Convert ISO strings back to datetime
+    # Enrich each charge point
+    enriched_cps = []
     for cp in charge_points:
-        if isinstance(cp.get("created_at"), str):
-            cp["created_at"] = datetime.fromisoformat(cp["created_at"])
-        if isinstance(cp.get("updated_at"), str):
-            cp["updated_at"] = datetime.fromisoformat(cp["updated_at"])
-        if cp.get("last_heartbeat") and isinstance(cp["last_heartbeat"], str):
-            cp["last_heartbeat"] = datetime.fromisoformat(cp["last_heartbeat"])
+        try:
+            enriched_cp = await enrich_charge_point(cp)
+            
+            # Convert ISO strings back to datetime
+            if isinstance(enriched_cp.get("created_at"), str):
+                enriched_cp["created_at"] = datetime.fromisoformat(enriched_cp["created_at"])
+            if isinstance(enriched_cp.get("updated_at"), str):
+                enriched_cp["updated_at"] = datetime.fromisoformat(enriched_cp["updated_at"])
+            if enriched_cp.get("last_heartbeat") and isinstance(enriched_cp["last_heartbeat"], str):
+                enriched_cp["last_heartbeat"] = datetime.fromisoformat(enriched_cp["last_heartbeat"])
+            if enriched_cp.get("go_live_date") and isinstance(enriched_cp["go_live_date"], str):
+                enriched_cp["go_live_date"] = datetime.fromisoformat(enriched_cp["go_live_date"])
+            
+            enriched_cps.append(enriched_cp)
+        except HTTPException:
+            continue
     
-    return charge_points
+    return enriched_cps
 
 
 @api_router.get("/charge-points/{charge_point_id}", response_model=ChargePointResponse)
