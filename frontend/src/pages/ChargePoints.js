@@ -119,25 +119,33 @@ const ChargePoints = () => {
     });
   };
 
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
   const addConnector = () => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       connectors: [
-        ...formData.connectors,
-        { connector_id: formData.connectors.length + 1, connector_type: 'Type2', power_kw: 22, status: 'AVAILABLE' }
+        ...prev.connectors,
+        { connector_id: prev.connectors.length + 1, connector_type: 'Type2', power_kw: 22, status: 'AVAILABLE' }
       ]
-    });
+    }));
   };
 
   const removeConnector = (index) => {
-    const newConnectors = formData.connectors.filter((_, i) => i !== index);
-    setFormData({ ...formData, connectors: newConnectors });
+    setFormData(prev => ({
+      ...prev,
+      connectors: prev.connectors.filter((_, i) => i !== index)
+    }));
   };
 
   const updateConnector = (index, field, value) => {
-    const newConnectors = [...formData.connectors];
-    newConnectors[index] = { ...newConnectors[index], [field]: value };
-    setFormData({ ...formData, connectors: newConnectors });
+    setFormData(prev => {
+      const newConnectors = [...prev.connectors];
+      newConnectors[index] = { ...newConnectors[index], [field]: value };
+      return { ...prev, connectors: newConnectors };
+    });
   };
 
   const handleAddChargePoint = async () => {
