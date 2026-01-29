@@ -634,14 +634,25 @@ const ChargePoints = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStatusBadgeVariant(cp.status)}>
-                        {cp.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={cp.is_online ? 'default' : 'secondary'}>
-                        {cp.is_online ? 'Online' : 'Offline'}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={getStatusBadgeVariant(cp.status)}>
+                          {cp.status}
+                        </Badge>
+                        <div className="flex gap-1">
+                          {cp.connectors.map((conn, idx) => {
+                            const color = conn.status === 'AVAILABLE' ? 'bg-green-500' : 
+                                        conn.status === 'OCCUPIED' ? 'bg-orange-500' :
+                                        conn.status === 'FAULTED' ? 'bg-red-500' : 'bg-slate-400';
+                            return (
+                              <div
+                                key={idx}
+                                className={`w-2 h-2 rounded-full ${color}`}
+                                title={`Connector ${conn.connector_id}: ${conn.status}`}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
