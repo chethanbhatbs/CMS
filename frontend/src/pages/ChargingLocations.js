@@ -302,6 +302,31 @@ const LocationFormDialog = ({ isOpen, onClose, onSubmit, title, description, for
               Enter longitude up to 5 decimal places for better precision.
             </p>
           </div>
+          
+          <div className="col-span-2">
+            <Label htmlFor="image_url">Location Image URL</Label>
+            <Input
+              id="image_url"
+              value={formData.image_url}
+              onChange={(e) => onFieldChange('image_url', e.target.value)}
+              placeholder="https://example.com/location-image.jpg"
+              data-testid="location-image-input"
+              autoComplete="off"
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              Recommended: 1200x800px or 16:9 aspect ratio for best display
+            </p>
+            {formData.image_url && (
+              <div className="mt-2">
+                <img 
+                  src={formData.image_url} 
+                  alt="Preview" 
+                  className="w-32 h-20 object-cover rounded border"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              </div>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose} data-testid="cancel-location-btn">
