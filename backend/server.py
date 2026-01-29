@@ -475,6 +475,159 @@ async def delete_location(
 
 
 # ============================================
+# OEM MANAGEMENT ENDPOINTS
+# ============================================
+
+class OEMCreate(BaseModel):
+    oem_name: str
+    website: Optional[str] = None
+    support_email: Optional[EmailStr] = None
+    protocol: str = "OCPP 1.6"
+    charger_type: str = "DC"
+    max_power_kw: float
+    max_voltage_v: float
+
+
+class OEMResponse(BaseModel):
+    id: str
+    oem_name: str
+    website: Optional[str]
+    support_email: Optional[str]
+    protocol: str
+    charger_type: str
+    max_power_kw: float
+    max_voltage_v: float
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+@api_router.get("/oems", response_model=List[OEMResponse])
+async def get_oems(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get all OEMs"""
+    oems = await db.oems.find({"status": "ACTIVE"}, {"_id": 0}).to_list(100)
+    
+    for oem in oems:
+        if isinstance(oem.get("created_at"), str):
+            oem["created_at"] = datetime.fromisoformat(oem["created_at"])
+        if isinstance(oem.get("updated_at"), str):
+            oem["updated_at"] = datetime.fromisoformat(oem["updated_at"])
+    
+    return oems
+
+
+@api_router.post("/oems", response_model=OEMResponse)
+async def create_oem(
+    oem_data: OEMCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Create a new OEM"""
+    oem = OEM(**oem_data.model_dump())
+    
+    oem_dict = oem.model_dump()
+    oem_dict['created_at'] = oem_dict['created_at'].isoformat()
+    oem_dict['updated_at'] = oem_dict['updated_at'].isoformat()
+    await db.oems.insert_one(oem_dict)
+    
+    return OEMResponse(**oem.model_dump())
+
+
+# ============================================
+# CHARGER MODEL MANAGEMENT ENDPOINTS
+# ============================================
+
+class ChargerModelCreate(BaseModel):
+    oem_id: str
+    model_name: str
+    description: Optional[str] = None
+    charger_type: str = "DC"
+    max_power_kw: float
+    max_voltage_v: float
+    connector_configs: List[ConnectorConfig] = []
+
+
+class ChargerModelResponse(BaseModel):
+    id: str
+    oem_id: str
+    model_name: str
+    description: Optional[str]
+    charger_type: str
+    max_power_kw: float
+    max_voltage_v: float
+    connector_configs: List[ConnectorConfig]
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+@api_router.get("/charger-models", response_model=List[ChargerModelResponse])
+async def get_charger_models(
+    oem_id: Optional[str] = None,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get all charger models, optionally filtered by OEM"""
+    query = {"status": "ACTIVE"}
+    if oem_id:
+        query["oem_id"] = oem_id
+    
+    models = await db.charger_models.find(query, {"_id": 0}).to_list(100)
+    
+    for model in models:
+        if isinstance(model.get("created_at"), str):
+            model["created_at"] = datetime.fromisoformat(model["created_at"])
+        if isinstance(model.get("updated_at"), str):
+            model["updated_at"] = datetime.fromisoformat(model["updated_at"])
+    
+    return models
+
+
+@api_router.post("/charger-models", response_model=ChargerModelResponse)
+async def create_charger_model(
+    model_data: ChargerModelCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Create a new charger model"""
+    # Verify OEM exists
+    oem = await db.oems.find_one({"id": model_data.oem_id}, {"_id": 0})
+    if not oem:
+        raise HTTPException(status_code=404, detail="OEM not found")
+    
+    # Validate max 4 connectors
+    if len(model_data.connector_configs) > 4:
+        raise HTTPException(status_code=400, detail="Maximum 4 connectors allowed per charger model")
+    
+    charger_model = ChargerModel(**model_data.model_dump())
+    
+    model_dict = charger_model.model_dump()
+    model_dict['created_at'] = model_dict['created_at'].isoformat()
+    model_dict['updated_at'] = model_dict['updated_at'].isoformat()
+    await db.charger_models.insert_one(model_dict)
+    
+    return ChargerModelResponse(**charger_model.model_dump())
+
+
+@api_router.get("/charger-models/{model_id}", response_model=ChargerModelResponse)
+async def get_charger_model(
+    model_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get a specific charger model"""
+    model = await db.charger_models.find_one({"id": model_id}, {"_id": 0})
+    
+    if not model:
+        raise HTTPException(status_code=404, detail="Charger model not found")
+    
+    if isinstance(model.get("created_at"), str):
+        model["created_at"] = datetime.fromisoformat(model["created_at"])
+    if isinstance(model.get("updated_at"), str):
+        model["updated_at"] = datetime.fromisoformat(model["updated_at"])
+    
+    return model
+
+
+# ============================================
 # CHARGE POINTS ENDPOINTS
 # ============================================
 
