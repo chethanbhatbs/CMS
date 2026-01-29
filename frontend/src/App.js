@@ -14,6 +14,7 @@ import GroupUsers from '@/pages/CRM/GroupUsers';
 
 // Charging Network
 import ChargingLocations from '@/pages/ChargingLocations';
+import LocationDetails from '@/pages/LocationDetails';
 import ChargePoints from '@/pages/ChargePoints';
 
 // Operations
