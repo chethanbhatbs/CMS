@@ -1112,6 +1112,162 @@ async def delete_charge_point(
     
     return {"message": "Charge point deleted successfully"}
 
+
+# ============================================
+# OCPP REMOTE COMMANDS
+# ============================================
+
+@api_router.post("/charge-points/{cp_id}/remote-start")
+async def remote_start_transaction(
+    cp_id: str,
+    id_tag: str,
+    connector_id: int = 1,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    \"\"\"Send RemoteStartTransaction command to charge point\"\"\"
+    from ocpp.v16 import call as ocpp_call
+    
+    # Get charge point from registry
+    cp = registry.get(cp_id)
+    if not cp:
+        raise HTTPException(status_code=404, detail="Charge point not connected")
+    
+    try:
+        request = ocpp_call.RemoteStartTransactionPayload(
+            id_tag=id_tag,
+            connector_id=connector_id
+        )
+        response = await cp.call(request)
+        
+        # Log action
+        await db.charger_logs.insert_one({
+            "charge_point_id": cp_id,
+            "log_level": "INFO",
+            "message": f"Remote start initiated for connector {connector_id}",
+            "action": "RemoteStartTransaction",
+            "metadata": {"id_tag": id_tag, "connector_id": connector_id, "status": response.status},
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return {"status": response.status, "message": "Remote start command sent"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/charge-points/{cp_id}/remote-stop")
+async def remote_stop_transaction(
+    cp_id: str,
+    transaction_id: int,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    \"\"\"Send RemoteStopTransaction command to charge point\"\"\"
+    from ocpp.v16 import call as ocpp_call
+    
+    cp = registry.get(cp_id)
+    if not cp:
+        raise HTTPException(status_code=404, detail="Charge point not connected")
+    
+    try:
+        request = ocpp_call.RemoteStopTransactionPayload(
+            transaction_id=transaction_id
+        )
+        response = await cp.call(request)
+        
+        await db.charger_logs.insert_one({
+            "charge_point_id": cp_id,
+            "log_level": "INFO",
+            "message": f"Remote stop initiated for transaction {transaction_id}",
+            "action": "RemoteStopTransaction",
+            "metadata": {"transaction_id": transaction_id, "status": response.status},
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return {"status": response.status, "message": "Remote stop command sent"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/charge-points/{cp_id}/reset")
+async def reset_charge_point(
+    cp_id: str,
+    reset_type: str = "Soft",
+    current_user: UserResponse = Depends(get_current_user)
+):
+    \"\"\"Send Reset command to charge point\"\"\"
+    from ocpp.v16 import call as ocpp_call
+    from ocpp.v16.enums import ResetType
+    
+    cp = registry.get(cp_id)
+    if not cp:
+        raise HTTPException(status_code=404, detail="Charge point not connected")
+    
+    try:
+        reset_enum = ResetType.soft if reset_type == "Soft" else ResetType.hard
+        request = ocpp_call.ResetPayload(type=reset_enum)
+        response = await cp.call(request)
+        
+        await db.charger_logs.insert_one({
+            "charge_point_id": cp_id,
+            "log_level": "WARNING",
+            "message": f"{reset_type} reset initiated",
+            "action": "Reset",
+            "metadata": {"reset_type": reset_type, "status": response.status},
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return {"status": response.status, "message": f"{reset_type} reset command sent"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/charge-points/{cp_id}/change-availability")
+async def change_availability(
+    cp_id: str,
+    connector_id: int,
+    availability_type: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    \"\"\"Send ChangeAvailability command to charge point\"\"\"
+    from ocpp.v16 import call as ocpp_call
+    from ocpp.v16.enums import AvailabilityType
+    
+    cp = registry.get(cp_id)
+    if not cp:
+        raise HTTPException(status_code=404, detail="Charge point not connected")
+    
+    try:
+        avail_enum = AvailabilityType.operative if availability_type == "Operative" else AvailabilityType.inoperative
+        request = ocpp_call.ChangeAvailabilityPayload(
+            connector_id=connector_id,
+            type=avail_enum
+        )
+        response = await cp.call(request)
+        
+        await db.charger_logs.insert_one({
+            "charge_point_id": cp_id,
+            "log_level": "INFO",
+            "message": f"Availability changed for connector {connector_id} to {availability_type}",
+            "action": "ChangeAvailability",
+            "metadata": {"connector_id": connector_id, "type": availability_type, "status": response.status},
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return {"status": response.status, "message": "Change availability command sent"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/charge-points/connected/list")
+async def get_connected_charge_points(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    \"\"\"Get list of currently connected charge points\"\"\"
+    connected_cps = registry.get_all()
+    return {
+        "connected_count": registry.count(),
+        "charge_points": connected_cps
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 app.include_router(ocpp_router)  # Add OCPP WebSocket router
