@@ -269,8 +269,11 @@ const ChargePoints = () => {
     fetchLocations();
     fetchOEMs();
     fetchAllChargerModels();
-    fetchChargePoints();
   }, []);
+
+  useEffect(() => {
+    fetchChargePoints(selectedLocation, searchQuery);
+  }, [currentPage]);
 
   useEffect(() => {
     if (formData.oem_id) {
