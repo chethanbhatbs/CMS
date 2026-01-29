@@ -275,6 +275,7 @@ const ChargePoints = () => {
     charger_model_id: '',
     serial_number: '',
     firmware_version: '',
+    go_live_date: '',
   });
 
   useEffect(() => {
