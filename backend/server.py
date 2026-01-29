@@ -283,6 +283,7 @@ class ChargingLocationCreate(BaseModel):
     country: str
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    image_url: Optional[str] = None
     franchise_id: Optional[str] = None
 
 
@@ -295,6 +296,7 @@ class ChargingLocationUpdate(BaseModel):
     country: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    image_url: Optional[str] = None
     franchise_id: Optional[str] = None
 
 
@@ -308,6 +310,7 @@ class ChargingLocationResponse(BaseModel):
     country: str
     latitude: Optional[float]
     longitude: Optional[float]
+    image_url: Optional[str]
     franchise_id: Optional[str]
     total_charge_points: int
     status: str
