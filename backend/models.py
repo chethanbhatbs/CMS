@@ -7,7 +7,7 @@ These models are used for:
 2. MongoDB document structure
 3. API documentation
 
-Note: All models exclude MongoDB's _id field using model_config
+Note: All  exclude MongoDB's _id field using model_config
 """
 
 from pydantic import BaseModel, Field, ConfigDict, EmailStr

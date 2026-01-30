@@ -169,11 +169,48 @@ const ChargePointDetails = () => {
   };
   
   const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard', {
-      description: 'WebSocket URL copied',
-      style: { '--toast-description-color': 'rgb(71, 85, 105)' }
-    });
+    // Try modern clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          toast.success('Copied to clipboard', {
+            description: 'WebSocket URL copied',
+            style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+          });
+        })
+        .catch(() => {
+          // Fallback to older method
+          fallbackCopy(text);
+        });
+    } else {
+      // Use fallback immediately if clipboard API not available
+      fallbackCopy(text);
+    }
+  };
+  
+  const fallbackCopy = (text) => {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+      document.execCommand('copy');
+      toast.success('Copied to clipboard', {
+        description: 'WebSocket URL copied',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+    } catch (err) {
+      toast.error('Failed to copy', {
+        description: 'Please copy manually',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+    }
+    
+    document.body.removeChild(textArea);
   };
   
   const getDerivedStatus = () => {
