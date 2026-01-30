@@ -52,11 +52,43 @@ const ChargePointDetails = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setChargePoint(cpResponse.data);
+      
+      // Generate WebSocket URL
+      const domain = BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://');
+      setWsUrl(`${domain}/ocpp/${cpResponse.data.charge_point_id}`);
 
       const locResponse = await axios.get(`${API}/locations/${cpResponse.data.location_id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setLocation(locResponse.data);
+      
+      // Fetch assigned tariff
+      try {
+        const tariffResponse = await axios.get(`${API}/tariff-assignments`, {
+          params: { charge_point_id: cpResponse.data.charge_point_id },
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (tariffResponse.data.length > 0) {
+          const assignment = tariffResponse.data[0];
+          const tariffDetail = await axios.get(`${API}/tariffs`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const tariff = tariffDetail.data.find(t => t.id === assignment.tariff_id);
+          setAssignedTariff(tariff);
+        }
+      } catch (err) {
+        console.log('No tariff assigned');
+      }
+      
+      // Fetch OCPP message logs
+      try {
+        const logsResponse = await axios.get(`${API}/charger-logs/${cpResponse.data.charge_point_id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setOcppMessages(logsResponse.data);
+      } catch (err) {
+        console.log('No logs found');
+      }
     } catch (error) {
       console.error('Error fetching charge point:', error);
       toast.error('Failed to load charge point details');
