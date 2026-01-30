@@ -192,7 +192,9 @@ const RoleManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false);
+  const [isEditRoleOpen, setIsEditRoleOpen] = useState(false);
   const [isInviteUserOpen, setIsInviteUserOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState(null);
   const [roleFormData, setRoleFormData] = useState({
     role_name: '',
     description: '',
