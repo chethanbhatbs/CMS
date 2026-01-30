@@ -397,6 +397,28 @@ const ChargePoints = () => {
     }
   };
 
+  const fetchTariffs = async () => {
+    try {
+      const response = await axios.get(`${API}/tariffs`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTariffs(response.data);
+    } catch (error) {
+      console.error('Error fetching tariffs:', error);
+    }
+  };
+
+  const fetchTariffAssignments = async () => {
+    try {
+      const response = await axios.get(`${API}/tariff-assignments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTariffAssignments(response.data);
+    } catch (error) {
+      console.error('Error fetching tariff assignments:', error);
+    }
+  };
+
   const fetchChargePoints = async (locationId = '', search = '') => {
     try {
       setLoading(true);
