@@ -1000,7 +1000,7 @@ async def create_charge_point(
         await db.connector_status.insert_one({
             "charge_point_id": charge_point_data.charge_point_id,
             "connector_id": config["connector_number"],
-            "status": "Unknown",  # OCPP status Unknown
+            "status": "UNKNOWN",  # Uppercase to match enum
             "error_code": "NoError",
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
