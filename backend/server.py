@@ -1407,6 +1407,18 @@ async def delete_tariff(
     return {"message": "Tariff deleted successfully"}
 
 
+@api_router.put("/tariffs/unset-default")
+async def unset_default_tariff(
+    current_user: UserResponse = Depends(require_super_admin)
+):
+    """Unset all default tariffs (SUPER_ADMIN only)"""
+    await db.tariffs.update_many(
+        {"is_default": True},
+        {"$set": {"is_default": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Default tariff unset"}
+
+
 # Tariff Assignment APIs
 class TariffAssignmentCreate(BaseModel):
     tariff_id: str
