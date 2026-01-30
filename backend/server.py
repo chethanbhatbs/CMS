@@ -818,11 +818,16 @@ async def enrich_charge_point(cp_doc: dict) -> dict:
             "connector_id": config["connector_number"]
         }, {"_id": 0})
         
+        # Normalize status to uppercase enum values
+        status_value = "UNKNOWN"  # Default
+        if conn_status and conn_status.get("status"):
+            status_value = conn_status["status"].upper()
+        
         connectors_with_status.append({
             "connector_id": config["connector_number"],
             "connector_type": config["connector_type"],
             "power_kw": config["max_power_kw"],
-            "status": conn_status["status"].upper() if conn_status and conn_status.get("status") else "UNKNOWN"
+            "status": status_value
         })
     
     cp_doc["connectors"] = connectors_with_status
