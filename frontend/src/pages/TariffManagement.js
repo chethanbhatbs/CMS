@@ -749,6 +749,20 @@ const TariffManagement = () => {
         isEdit={false}
       />
 
+      <TariffDialog
+        isOpen={isEditTariffOpen}
+        onClose={() => {
+          setIsEditTariffOpen(false);
+          setSelectedTariff(null);
+          resetTariffForm();
+        }}
+        onSubmit={handleEditTariff}
+        title="Edit Tariff"
+        formData={tariffFormData}
+        onFieldChange={handleTariffFieldChange}
+        isEdit={true}
+      />
+
       <AssignTariffDialog
         isOpen={isAssignTariffOpen}
         onClose={() => {
