@@ -40,6 +40,7 @@ import RFIDManagement from '@/pages/RFIDManagement';
 import TariffManagement from '@/pages/TariffManagement';
 import AssetManagement from '@/pages/AssetManagement';
 import Configuration from '@/pages/Configuration';
+import AccountTransactions from '@/pages/AccountTransactions';
 
 // Charge Point Details
 import ChargePointDetails from '@/pages/ChargePointDetails';
