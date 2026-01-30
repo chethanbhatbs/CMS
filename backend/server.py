@@ -1850,6 +1850,21 @@ async def get_charging_invoice(
     }
 
 
+@api_router.get("/charger-logs/{cp_id}")
+async def get_charger_logs_by_cp(
+    cp_id: str,
+    limit: int = 50,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get OCPP message logs for a specific charge point"""
+    logs = await db.charger_logs.find(
+        {"charge_point_id": cp_id},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(limit).to_list(limit)
+    
+    return logs
+
+
 # Include the router in the main app
 app.include_router(api_router)
 app.include_router(ocpp_router)  # Add OCPP WebSocket router
