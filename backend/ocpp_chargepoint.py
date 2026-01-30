@@ -140,21 +140,39 @@ class ChargePoint(CP):
     async def on_status_notification(self, connector_id, error_code, status, **kwargs):
         """Handle StatusNotification from charge point
         
-        Status Logic (OCPP-Correct):
-        1. Store connector-level status
-        2. Derive CP status:
-           - FAULTED: if ANY connector faulted
-           - AVAILABLE: if ANY connector available
-           - OCCUPIED: if all occupied/charging OR (occupied + unknown)
-           - UNAVAILABLE: otherwise (including all unknown)
+        OCPP Status Mapping:
+        - Available → AVAILABLE
+        - Charging/Preparing/Finishing → OCCUPIED
+        - Faulted → FAULTED
+        - Unavailable → UNAVAILABLE
+        - Unknown → UNKNOWN
         """
         logger.info(f"StatusNotification from {self.id} Connector {connector_id}: {status}")
         
-        # Store connector status
+        # Normalize OCPP status to CMS enum (uppercase)
+        normalized_status = status.upper() if status else "UNKNOWN"
+        
+        # Map OCPP statuses to CMS enum values
+        status_mapping = {
+            "AVAILABLE": "AVAILABLE",
+            "CHARGING": "OCCUPIED",
+            "PREPARING": "OCCUPIED",
+            "FINISHING": "OCCUPIED",
+            "RESERVED": "OCCUPIED",
+            "SUSPENDEDEVSE": "UNAVAILABLE",
+            "SUSPENDEDEV": "UNAVAILABLE",
+            "FAULTED": "FAULTED",
+            "UNAVAILABLE": "UNAVAILABLE"
+        }
+        
+        mapped_status = status_mapping.get(normalized_status, "UNKNOWN")
+        
+        # Store connector status with mapped value
         await db.connector_status.update_one(
             {"charge_point_id": self.id, "connector_id": connector_id},
             {"$set": {
-                "status": status,
+                "status": mapped_status,
+                "ocpp_status": status,  # Keep original OCPP status for reference
                 "error_code": error_code,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "info": kwargs.get("info", ""),
