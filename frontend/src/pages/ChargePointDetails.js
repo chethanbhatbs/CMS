@@ -327,11 +327,12 @@ const ChargePointDetails = () => {
               {chargePoint.connectors.map((connector, idx) => (
                 <div key={idx} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start gap-4">
-                    <img
-                      src={CONNECTOR_IMAGES[connector.connector_type] || CONNECTOR_IMAGES.Type2}
-                      alt={connector.connector_type}
-                      className="w-20 h-20 rounded-md object-cover"
-                    />
+                    <div className="w-20 h-20 rounded-md bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center border-2 border-primary/20">
+                      <div className="text-center">
+                        <Zap className="h-8 w-8 text-primary mx-auto mb-1" />
+                        <p className="text-xs font-semibold text-primary">{connector.connector_type}</p>
+                      </div>
+                    </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-slate-900">Connector {connector.connector_id}</h3>
