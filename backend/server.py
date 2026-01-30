@@ -1657,7 +1657,17 @@ async def update_user_status(
     is_active: bool,
     current_user: UserResponse = Depends(require_super_admin)
 ):
-    """Update user active status (SUPER_ADMIN only)"""
+    """Update user active status (SUPER_ADMIN only)
+    
+    Enforcement:
+    - Updates database immediately
+    - Inactive users cannot login (checked in login endpoint)
+    - Active JWT tokens remain valid until expiry
+    """
+    # Prevent self-deactivation
+    if current_user.id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot modify your own status")
+    
     result = await db.users.update_one(
         {"id": user_id},
         {"$set": {"is_active": is_active, "updated_at": datetime.now(timezone.utc).isoformat()}}
