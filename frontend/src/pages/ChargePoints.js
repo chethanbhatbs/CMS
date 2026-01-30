@@ -754,6 +754,18 @@ const ChargePoints = () => {
                         ))}
                       </div>
                     </TableCell>
+                    <TableCell className="text-sm">
+                      {getAssignedTariff(cp.charge_point_id) ? (
+                        <button
+                          onClick={() => navigate('/admin/tariffs')}
+                          className="text-primary hover:underline font-medium"
+                        >
+                          {getAssignedTariff(cp.charge_point_id)}
+                        </button>
+                      ) : (
+                        <span className="text-slate-400">None</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         {cp.connectors.map((conn, idx) => {
