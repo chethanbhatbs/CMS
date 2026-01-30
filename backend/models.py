@@ -122,10 +122,11 @@ class RetailUser(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str = Field(default_factory=lambda: f"USER-{str(uuid.uuid4())[:8].upper()}")  # Unique ID for OCPP
     email: EmailStr
     phone: str
     full_name: str
-    rfid_cards: List[str] = []
+    rfid_cards: List[str] = []  # List of RFID tag IDs
     wallet_balance: float = 0.0
     status: UserStatus = UserStatus.ACTIVE
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
