@@ -1570,6 +1570,23 @@ async def update_role(
     return updated
 
 
+@api_router.delete("/roles/{role_id}")
+async def delete_role(
+    role_id: str,
+    current_user: UserResponse = Depends(require_super_admin)
+):
+    """Delete a role (SUPER_ADMIN only)"""
+    result = await db.roles.update_one(
+        {"id": role_id},
+        {"$set": {"status": "INACTIVE", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    return {"message": "Role deleted successfully"}
+
+
 # User Invitation APIs
 class UserInviteRequest(BaseModel):
     email: EmailStr
