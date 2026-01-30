@@ -309,6 +309,8 @@ const ChargePoints = () => {
   const [allChargerModels, setAllChargerModels] = useState([]);
   const [filteredChargerModels, setFilteredChargerModels] = useState([]);
   const [selectedModelDetails, setSelectedModelDetails] = useState(null);
+  const [tariffAssignments, setTariffAssignments] = useState([]);
+  const [tariffs, setTariffs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
