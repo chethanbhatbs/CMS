@@ -91,6 +91,7 @@ function App() {
             <Route path="admin/tariffs" element={<TariffManagement />} />
             <Route path="admin/assets" element={<AssetManagement />} />
             <Route path="admin/configuration" element={<Configuration />} />
+            <Route path="admin/account-transactions" element={<AccountTransactions />} />
           </Route>
         </Routes>
       </BrowserRouter>
