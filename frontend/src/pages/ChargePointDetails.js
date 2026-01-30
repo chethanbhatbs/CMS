@@ -239,10 +239,35 @@ const ChargePointDetails = () => {
             {chargePoint.charge_point_id}
           </p>
         </div>
-        <Badge className={`text-lg px-4 py-2 ${getStatusColor(chargePoint.status)}`}>
-          {chargePoint.status}
+        <Badge className={`text-lg px-4 py-2 ${getStatusColor(getDerivedStatus())}`}>
+          {getDerivedStatus()}
         </Badge>
       </div>
+
+      {/* WebSocket URL */}
+      <Card>
+        <CardHeader>
+          <CardTitle>OCPP WebSocket URL</CardTitle>
+          <CardDescription>Use this URL to connect charger or simulator</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            <Input
+              value={wsUrl}
+              readOnly
+              className="font-mono text-sm"
+              data-testid="websocket-url"
+            />
+            <Button
+              variant="outline"
+              onClick={() => copyToClipboard(wsUrl)}
+              data-testid="copy-ws-url-btn"
+            >
+              Copy
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
