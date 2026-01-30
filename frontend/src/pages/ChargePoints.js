@@ -425,7 +425,8 @@ const ChargePoints = () => {
 
   const handleLocationFilter = (value) => {
     setSelectedLocation(value);
-    fetchChargePoints(value, searchQuery);
+    const locationId = value === 'all' ? '' : value;
+    fetchChargePoints(locationId, searchQuery);
   };
 
   const handleFieldChange = (field, value) => {
