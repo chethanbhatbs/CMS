@@ -751,6 +751,9 @@ class ChargePointUpdate(BaseModel):
     firmware_version_override: Optional[str] = None
     websocket_id: Optional[str] = None
     go_live_date: Optional[datetime] = None
+    is_24x7: Optional[bool] = None
+    availability_from: Optional[str] = None
+    availability_to: Optional[str] = None
 
 
 class ChargePointResponse(BaseModel):
