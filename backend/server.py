@@ -819,7 +819,7 @@ async def enrich_charge_point(cp_doc: dict) -> dict:
             "connector_id": config["connector_number"],
             "connector_type": config["connector_type"],
             "power_kw": config["max_power_kw"],
-            "status": conn_status["status"] if conn_status else "Unknown"
+            "status": conn_status["status"].upper() if conn_status and conn_status.get("status") else "UNKNOWN"
         })
     
     cp_doc["connectors"] = connectors_with_status
