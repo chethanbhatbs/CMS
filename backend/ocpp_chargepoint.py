@@ -277,10 +277,14 @@ class ChargePoint(CP):
         return call_result.StatusNotificationPayload()
     
     async def on_start_transaction(self, connector_id, id_tag, meter_start, timestamp, **kwargs):
-        """Handle StartTransaction from charge point"""
+        """Handle StartTransaction from charge point
+        
+        Transaction ID: Numeric format (OCPP convention), ≤6 digits
+        """
         logger.info(f"StartTransaction from {self.id} Connector {connector_id}, ID Tag: {id_tag}")
         
-        transaction_id = int(datetime.now(timezone.utc).timestamp() * 1000)
+        # Generate numeric transaction ID (timestamp-based, last 6 digits)
+        transaction_id = int(str(int(datetime.now(timezone.utc).timestamp() * 1000))[-6:])
         
         # Create session in database
         await db.charging_sessions.insert_one({
@@ -288,6 +292,7 @@ class ChargePoint(CP):
             "charge_point_id": self.id,
             "connector_id": connector_id,
             "rfid_tag": id_tag,
+            "user_id": None,  # Will be linked if RFID found
             "start_time": timestamp,
             "start_meter_kwh": meter_start / 1000,  # Convert Wh to kWh
             "current_meter_kwh": meter_start / 1000,
