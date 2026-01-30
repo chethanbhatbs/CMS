@@ -1740,6 +1740,113 @@ async def download_invoice(
         "message": "Invoice generation will be implemented with PDF library"
     }
 
+
+# ============================================
+# CHARGING TRANSACTIONS ENDPOINTS
+# ============================================
+
+class ChargingTransactionResponse(BaseModel):
+    id: str
+    transaction_id: str
+    session_id: str
+    user_id: Optional[str]
+    user_name: Optional[str]
+    location_id: str
+    location_name: str
+    charge_point_id: str
+    connector_id: int
+    start_time: datetime
+    end_time: datetime
+    duration_minutes: int
+    energy_kwh: float
+    tariff_id: Optional[str]
+    tariff_name: Optional[str]
+    unit_rate: float
+    session_type: str
+    base_cost: float
+    tax_amount: float
+    total_cost: float
+    currency: str
+    status: str
+    meter_start: float
+    meter_stop: float
+    created_at: datetime
+
+
+@api_router.get("/charging-transactions", response_model=List[ChargingTransactionResponse])
+async def get_charging_transactions(
+    location_id: Optional[str] = None,
+    charge_point_id: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get all charging transactions"""
+    query = {}
+    if location_id:
+        query["location_id"] = location_id
+    if charge_point_id:
+        query["charge_point_id"] = charge_point_id
+    
+    transactions = await db.charging_transactions.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+    
+    for txn in transactions:
+        if isinstance(txn.get("start_time"), str):
+            txn["start_time"] = datetime.fromisoformat(txn["start_time"])
+        if isinstance(txn.get("end_time"), str):
+            txn["end_time"] = datetime.fromisoformat(txn["end_time"])
+        if isinstance(txn.get("created_at"), str):
+            txn["created_at"] = datetime.fromisoformat(txn["created_at"])
+    
+    return transactions
+
+
+@api_router.get("/charging-transactions/{transaction_id}/invoice")
+async def get_charging_invoice(
+    transaction_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get detailed invoice for charging transaction"""
+    transaction = await db.charging_transactions.find_one({"transaction_id": transaction_id}, {"_id": 0})
+    
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    # Fetch related data
+    location = await db.charging_locations.find_one({"id": transaction["location_id"]}, {"_id": 0})
+    cp = await db.charge_points.find_one({"charge_point_id": transaction["charge_point_id"]}, {"_id": 0})
+    
+    # Enrich CP if found
+    enriched_cp = None
+    if cp:
+        try:
+            enriched_cp = await enrich_charge_point(cp)
+        except:
+            pass
+    
+    # Get tariff if applied
+    tariff = None
+    if transaction.get("tariff_id"):
+        tariff = await db.tariffs.find_one({"id": transaction["tariff_id"]}, {"_id": 0})
+    
+    return {
+        "transaction": transaction,
+        "location": location,
+        "charge_point": enriched_cp,
+        "tariff": tariff,
+        "invoice_details": {
+            "energy_consumed_kwh": transaction.get("energy_kwh", 0),
+            "duration_minutes": transaction.get("duration_minutes", 0),
+            "unit_rate": transaction.get("unit_rate", 0),
+            "base_cost": transaction.get("base_cost", 0),
+            "tax_amount": transaction.get("tax_amount", 0),
+            "total_cost": transaction.get("total_cost", 0),
+            "meter_start": transaction.get("meter_start", 0),
+            "meter_stop": transaction.get("meter_stop", 0)
+        }
+    }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 app.include_router(ocpp_router)  # Add OCPP WebSocket router
