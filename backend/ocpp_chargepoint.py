@@ -311,39 +311,138 @@ class ChargePoint(CP):
         )
     
     async def on_stop_transaction(self, meter_stop, timestamp, transaction_id, **kwargs):
-        """Handle StopTransaction from charge point"""
+        """Handle StopTransaction from charge point
+        
+        On-Hold Detection:
+        - Meter anomalies (start > stop)
+        - Excessive energy consumption
+        - Missing data
+        """
         logger.info(f"StopTransaction from {self.id}: Transaction {transaction_id}")
         
         # Find session
         session = await db.charging_sessions.find_one({"session_id": str(transaction_id)})
         
-        if session:
-            start_meter = session.get("start_meter_kwh", 0) * 1000  # Convert back to Wh
-            energy_kwh = (meter_stop - start_meter) / 1000
-            
-            await db.charging_sessions.update_one(
-                {"session_id": str(transaction_id)},
-                {"$set": {
-                    "end_time": timestamp,
-                    "end_meter_kwh": meter_stop / 1000,
-                    "energy_kwh": energy_kwh,
-                    "stop_reason": kwargs.get("reason", ""),
-                    "status": "COMPLETED",
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }}
-            )
-            
-            # Update total energy
+        if not session:
+            logger.warning(f"Session {transaction_id} not found for StopTransaction")
+            return call_result.StopTransactionPayload()
+        
+        start_meter = session.get("start_meter_kwh", 0) * 1000  # Convert back to Wh
+        energy_kwh = (meter_stop - start_meter) / 1000
+        
+        # Anomaly detection
+        status = "COMPLETED"
+        on_hold_reason = None
+        
+        # Check 1: Meter anomaly
+        if meter_stop < start_meter:
+            status = "ON_HOLD"
+            on_hold_reason = "Meter anomaly: Stop meter less than start meter"
+            logger.warning(f"ON-HOLD: {on_hold_reason} (Transaction {transaction_id})")
+        
+        # Check 2: Excessive energy (> 200 kWh in single session)
+        elif energy_kwh > 200:
+            status = "ON_HOLD"
+            on_hold_reason = f"Excessive energy: {energy_kwh:.2f} kWh exceeds limit"
+            logger.warning(f"ON-HOLD: {on_hold_reason} (Transaction {transaction_id})")
+        
+        # Check 3: Negative energy
+        elif energy_kwh < 0:
+            status = "ON_HOLD"
+            on_hold_reason = "Negative energy calculated"
+            logger.warning(f"ON-HOLD: {on_hold_reason} (Transaction {transaction_id})")
+        
+        # Update session
+        session_update = {
+            "end_time": timestamp,
+            "end_meter_kwh": meter_stop / 1000,
+            "energy_kwh": energy_kwh if energy_kwh > 0 else 0,
+            "stop_reason": kwargs.get("reason", ""),
+            "status": status,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        if on_hold_reason:
+            session_update["on_hold_reason"] = on_hold_reason
+        
+        await db.charging_sessions.update_one(
+            {"session_id": str(transaction_id)},
+            {"$set": session_update}
+        )
+        
+        # Update total energy only if COMPLETED (not for ON_HOLD)
+        if status == "COMPLETED" and energy_kwh > 0:
             await db.charge_points.update_one(
                 {"charge_point_id": self.id},
                 {"$inc": {"total_energy_kwh": energy_kwh}}
             )
             
-            logger.info(f"Session {transaction_id} completed: {energy_kwh:.2f} kWh")
-        else:
-            logger.warning(f"Session {transaction_id} not found for StopTransaction")
+            # Auto-debit wallet if user linked
+            if session.get("user_id"):
+                await self._process_wallet_debit(session, energy_kwh)
+        
+        logger.info(f"Session {transaction_id} {status}: {energy_kwh:.2f} kWh")
         
         return call_result.StopTransactionPayload()
+    
+    async def _process_wallet_debit(self, session, energy_kwh):
+        """Automatically debit user wallet for completed session"""
+        try:
+            user = await db.retail_users.find_one({"user_id": session["user_id"]}, {"_id": 0})
+            if not user:
+                return
+            
+            # Get applicable tariff (default if not assigned)
+            tariff = await db.tariffs.find_one({"is_default": True}, {"_id": 0})
+            if not tariff:
+                logger.warning("No default tariff found, skipping wallet debit")
+                return
+            
+            # Calculate cost
+            if tariff["tariff_type"] == "energy_based":
+                base_cost = energy_kwh * tariff["unit_rate"]
+            else:
+                duration_min = (datetime.fromisoformat(session.get("end_time", datetime.now(timezone.utc).isoformat())) - 
+                               datetime.fromisoformat(session["start_time"])).total_seconds() / 60
+                base_cost = duration_min * tariff["unit_rate"]
+            
+            tax_amount = base_cost * (tariff.get("tax_percentage", 0) / 100)
+            total_cost = base_cost + tax_amount
+            
+            # Check sufficient balance
+            if user["wallet_balance"] < total_cost:
+                logger.warning(f"Insufficient balance for user {user['user_id']}")
+                return
+            
+            # Debit wallet
+            new_balance = user["wallet_balance"] - total_cost
+            await db.retail_users.update_one(
+                {"user_id": user["user_id"]},
+                {"$set": {"wallet_balance": new_balance}}
+            )
+            
+            # Log transaction
+            from models import AccountTransaction
+            txn = AccountTransaction(
+                user_id=user["user_id"],
+                user_name=user["full_name"],
+                phone=user.get("phone"),
+                session_id=session["session_id"],
+                transaction_type="DEBIT",
+                amount=total_cost,
+                description=f"Charging session: {energy_kwh:.2f} kWh",
+                status="COMPLETED"
+            )
+            
+            txn_dict = txn.model_dump()
+            txn_dict['created_at'] = txn_dict['created_at'].isoformat()
+            txn_dict['updated_at'] = txn_dict['updated_at'].isoformat()
+            await db.account_transactions.insert_one(txn_dict)
+            
+            logger.info(f"Wallet debited: ${total_cost:.2f} from {user['user_id']}")
+            
+        except Exception as e:
+            logger.error(f"Wallet debit failed: {e}")
     
     async def on_meter_values(self, connector_id, meter_value, transaction_id=None, **kwargs):
         """Handle MeterValues from charge point
