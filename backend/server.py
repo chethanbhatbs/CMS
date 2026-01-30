@@ -1409,9 +1409,13 @@ async def delete_tariff(
 
 @api_router.put("/tariffs/unset-default")
 async def unset_default_tariff(
-    current_user: UserResponse = Depends(require_super_admin)
+    current_user: UserResponse = Depends(get_current_user)
 ):
-    """Unset all default tariffs (SUPER_ADMIN only)"""
+    """Unset all default tariffs"""
+    # Check if user is SUPER_ADMIN
+    if current_user.role != "SUPER_ADMIN":
+        raise HTTPException(status_code=403, detail="Access denied. SUPER_ADMIN role required")
+    
     await db.tariffs.update_many(
         {"is_default": True},
         {"$set": {"is_default": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
