@@ -1810,6 +1810,149 @@ async def delete_rfid_card(
 
 
 # ============================================
+# RETAIL USERS (CRM) ENDPOINTS
+# ============================================
+
+class RetailUserCreate(BaseModel):
+    email: EmailStr
+    phone: str
+    full_name: str
+
+
+class RetailUserResponse(BaseModel):
+    id: str
+    user_id: str
+    email: str
+    phone: str
+    full_name: str
+    rfid_cards: List[str]
+    wallet_balance: float
+    status: str
+    created_at: datetime
+
+
+@api_router.get("/retail-users", response_model=List[RetailUserResponse])
+async def get_retail_users(
+    status: Optional[str] = None,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get all retail users"""
+    query = {}
+    if status:
+        query["status"] = status
+    
+    users = await db.retail_users.find(query, {"_id": 0}).to_list(100)
+    
+    for user_doc in users:
+        if isinstance(user_doc.get("created_at"), str):
+            user_doc["created_at"] = datetime.fromisoformat(user_doc["created_at"])
+    
+    return users
+
+
+@api_router.post("/retail-users", response_model=RetailUserResponse)
+async def create_retail_user(
+    user_data: RetailUserCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Create a new retail user (manual or from mobile app)"""
+    from models import RetailUser
+    
+    # Check if email already exists
+    existing = await db.retail_users.find_one({"email": user_data.email}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    retail_user = RetailUser(**user_data.model_dump())
+    
+    user_dict = retail_user.model_dump()
+    user_dict['created_at'] = user_dict['created_at'].isoformat()
+    user_dict['updated_at'] = user_dict['updated_at'].isoformat()
+    await db.retail_users.insert_one(user_dict)
+    
+    return RetailUserResponse(**retail_user.model_dump())
+
+
+@api_router.post("/retail-users/mobile-sync")
+async def sync_mobile_user(
+    user_data: RetailUserCreate
+):
+    """Sync user from mobile app (no auth required for registration)"""
+    from models import RetailUser
+    
+    # Check if already exists
+    existing = await db.retail_users.find_one({"email": user_data.email}, {"_id": 0})
+    if existing:
+        return {"message": "User already exists", "user_id": existing["user_id"]}
+    
+    # Create new retail user
+    retail_user = RetailUser(**user_data.model_dump())
+    
+    user_dict = retail_user.model_dump()
+    user_dict['created_at'] = user_dict['created_at'].isoformat()
+    user_dict['updated_at'] = user_dict['updated_at'].isoformat()
+    await db.retail_users.insert_one(user_dict)
+    
+    return {
+        "message": "User synced successfully",
+        "user_id": retail_user.user_id,
+        "wallet_balance": retail_user.wallet_balance
+    }
+
+
+@api_router.patch("/retail-users/{user_id}/wallet")
+async def update_wallet_balance(
+    user_id: str,
+    amount: float,
+    transaction_type: str,  # CREDIT or DEBIT
+    description: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update retail user wallet balance"""
+    user = await db.retail_users.find_one({"user_id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    current_balance = user.get("wallet_balance", 0.0)
+    
+    if transaction_type == "DEBIT":
+        if current_balance < amount:
+            raise HTTPException(status_code=400, detail="Insufficient balance")
+        new_balance = current_balance - amount
+    else:  # CREDIT
+        new_balance = current_balance + amount
+    
+    # Update wallet
+    await db.retail_users.update_one(
+        {"user_id": user_id},
+        {"$set": {"wallet_balance": new_balance, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Log in account transactions
+    from models import AccountTransaction
+    txn = AccountTransaction(
+        user_id=user_id,
+        user_name=user["full_name"],
+        phone=user.get("phone"),
+        transaction_type=transaction_type,
+        amount=amount,
+        description=description,
+        status="COMPLETED"
+    )
+    
+    txn_dict = txn.model_dump()
+    txn_dict['created_at'] = txn_dict['created_at'].isoformat()
+    txn_dict['updated_at'] = txn_dict['updated_at'].isoformat()
+    await db.account_transactions.insert_one(txn_dict)
+    
+    return {
+        "message": "Wallet updated successfully",
+        "new_balance": new_balance,
+        "transaction_id": txn.transaction_id
+    }
+
+
+# ============================================
 # ACCOUNT TRANSACTIONS ENDPOINTS
 # ============================================
 
