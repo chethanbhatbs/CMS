@@ -36,7 +36,10 @@ const ChargePointDetails = () => {
   const { token } = useAuth();
   const [chargePoint, setChargePoint] = useState(null);
   const [location, setLocation] = useState(null);
+  const [assignedTariff, setAssignedTariff] = useState(null);
+  const [ocppMessages, setOcppMessages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [wsUrl, setWsUrl] = useState('');
 
   useEffect(() => {
     fetchChargePointDetails();
