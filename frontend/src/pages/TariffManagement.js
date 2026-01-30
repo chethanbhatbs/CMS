@@ -623,7 +623,12 @@ const TariffManagement = () => {
                   <TableBody>
                     {tariffs.map((tariff) => (
                       <TableRow key={tariff.id}>
-                        <TableCell className="font-medium">{tariff.tariff_name}</TableCell>
+                        <TableCell className="font-medium">
+                          {tariff.tariff_name}
+                          {tariff.is_default && (
+                            <Badge variant="default" className="ml-2">DEFAULT</Badge>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline">
                             {tariff.tariff_type === 'energy_based' ? 'Energy (kWh)' : 'Time (min)'}
@@ -642,7 +647,19 @@ const TariffManagement = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleDeleteTariff(tariff.id, tariff.tariff_name)}>
+                              <DropdownMenuItem onClick={() => openEditTariff(tariff)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              {!tariff.is_default && (
+                                <DropdownMenuItem onClick={() => handleSetDefaultTariff(tariff.id, tariff.tariff_name)}>
+                                  Set as Default
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteTariff(tariff.id, tariff.tariff_name)}
+                                className="text-red-600"
+                              >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete
                               </DropdownMenuItem>
