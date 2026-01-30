@@ -570,6 +570,9 @@ const ChargePoints = () => {
       serial_number: cp.serial_number || '',
       firmware_version: cp.firmware_version || '',
       go_live_date: goLiveDate,
+      is_24x7: cp.is_24x7 !== undefined ? cp.is_24x7 : true,
+      availability_from: cp.availability_from || '',
+      availability_to: cp.availability_to || '',
     });
     
     // Trigger model filtering for edit mode
