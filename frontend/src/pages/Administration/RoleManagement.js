@@ -23,6 +23,12 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, UserPlus, CheckCircle, XCircle, MoreVertical, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import Breadcrumb from '@/components/Breadcrumb';
 import { toast } from 'sonner';
 import axios from 'axios';
