@@ -195,6 +195,9 @@ class ChargePoint(BaseModel):
     firmware_version_override: Optional[str] = None  # Override model's default firmware
     websocket_id: Optional[str] = None  # OCPP WebSocket connection ID
     go_live_date: Optional[datetime] = None
+    is_24x7: bool = True  # 24×7 availability
+    availability_from: Optional[str] = None  # HH:MM format
+    availability_to: Optional[str] = None  # HH:MM format
     status: ChargePointStatus = ChargePointStatus.UNAVAILABLE  # Default UNKNOWN until first StatusNotification
     is_online: bool = False
     last_heartbeat: Optional[datetime] = None
