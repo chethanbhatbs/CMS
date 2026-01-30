@@ -1627,6 +1627,119 @@ async def update_user_status(
     
     return {"message": f"User {'activated' if is_active else 'deactivated'} successfully"}
 
+
+# ============================================
+# ACCOUNT TRANSACTIONS ENDPOINTS
+# ============================================
+
+class AccountTransactionCreate(BaseModel):
+    user_id: str
+    user_name: str
+    phone: Optional[str] = None
+    gateway_id: Optional[str] = None
+    session_id: Optional[str] = None
+    transaction_type: str  # CREDIT or DEBIT
+    amount: float
+    payment_method: Optional[str] = None
+    description: Optional[str] = None
+
+
+class AccountTransactionResponse(BaseModel):
+    id: str
+    transaction_id: str
+    user_id: str
+    user_name: str
+    phone: Optional[str]
+    gateway_id: Optional[str]
+    session_id: Optional[str]
+    transaction_type: str
+    amount: float
+    currency: str
+    status: str
+    payment_method: Optional[str]
+    description: Optional[str]
+    invoice_url: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+@api_router.get("/account-transactions", response_model=List[AccountTransactionResponse])
+async def get_account_transactions(
+    user_id: Optional[str] = None,
+    transaction_type: Optional[str] = None,
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get all account transactions"""
+    query = {}
+    if user_id:
+        query["user_id"] = user_id
+    if transaction_type:
+        query["transaction_type"] = transaction_type
+    if status:
+        query["status"] = status
+    
+    transactions = await db.account_transactions.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+    
+    for txn in transactions:
+        if isinstance(txn.get("created_at"), str):
+            txn["created_at"] = datetime.fromisoformat(txn["created_at"])
+        if isinstance(txn.get("updated_at"), str):
+            txn["updated_at"] = datetime.fromisoformat(txn["updated_at"])
+    
+    return transactions
+
+
+@api_router.post("/account-transactions", response_model=AccountTransactionResponse)
+async def create_account_transaction(
+    txn_data: AccountTransactionCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Create a new account transaction"""
+    from models import AccountTransaction
+    
+    transaction = AccountTransaction(
+        user_id=txn_data.user_id,
+        user_name=txn_data.user_name,
+        phone=txn_data.phone,
+        gateway_id=txn_data.gateway_id,
+        session_id=txn_data.session_id,
+        transaction_type=txn_data.transaction_type,
+        amount=txn_data.amount,
+        payment_method=txn_data.payment_method,
+        description=txn_data.description,
+        status="COMPLETED"  # Default to completed for manual entries
+    )
+    
+    txn_dict = transaction.model_dump()
+    txn_dict['created_at'] = txn_dict['created_at'].isoformat()
+    txn_dict['updated_at'] = txn_dict['updated_at'].isoformat()
+    await db.account_transactions.insert_one(txn_dict)
+    
+    return AccountTransactionResponse(**transaction.model_dump())
+
+
+@api_router.get("/account-transactions/{transaction_id}/invoice")
+async def download_invoice(
+    transaction_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Generate and download invoice for transaction"""
+    transaction = await db.account_transactions.find_one({"transaction_id": transaction_id}, {"_id": 0})
+    
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    # In production, generate PDF invoice
+    # For now, return transaction details
+    return {
+        "transaction": transaction,
+        "invoice_url": f"/invoices/{transaction_id}.pdf",
+        "message": "Invoice generation will be implemented with PDF library"
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 app.include_router(ocpp_router)  # Add OCPP WebSocket router
