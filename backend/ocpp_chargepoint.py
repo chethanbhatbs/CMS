@@ -120,6 +120,50 @@ class ChargePoint(CP):
             status=RegistrationStatus.accepted
         )
     
+    async def on_authorize(self, id_tag, **kwargs):
+        """Handle Authorize request - Validate RFID
+        
+        OCPP Behavior:
+        - Active RFID → Accepted
+        - Inactive/Expired/Unknown RFID → Rejected
+        """
+        logger.info(f"Authorize request from {self.id} for ID Tag: {id_tag}")
+        
+        # Validate RFID against database
+        rfid_card = await db.rfid_cards.find_one({"rfid_tag": id_tag}, {"_id": 0})
+        
+        if not rfid_card:
+            logger.warning(f"RFID {id_tag} not found in database")
+            return call_result.AuthorizePayload(
+                id_tag_info={'status': 'Invalid'}
+            )
+        
+        # Check status
+        if rfid_card["status"] != "ACTIVE":
+            logger.warning(f"RFID {id_tag} is {rfid_card['status']}")
+            return call_result.AuthorizePayload(
+                id_tag_info={'status': 'Blocked'}
+            )
+        
+        # Check expiry
+        if rfid_card.get("expiry_date"):
+            expiry = datetime.fromisoformat(rfid_card["expiry_date"]) if isinstance(rfid_card["expiry_date"], str) else rfid_card["expiry_date"]
+            if expiry < datetime.now(timezone.utc):
+                logger.warning(f"RFID {id_tag} has expired")
+                await db.rfid_cards.update_one(
+                    {"rfid_tag": id_tag},
+                    {"$set": {"status": "EXPIRED"}}
+                )
+                return call_result.AuthorizePayload(
+                    id_tag_info={'status': 'Expired'}
+                )
+        
+        # RFID is valid
+        logger.info(f"RFID {id_tag} authorized for user: {rfid_card.get('user_name', 'Unknown')}")
+        return call_result.AuthorizePayload(
+            id_tag_info={'status': 'Accepted'}
+        )
+    
     async def on_heartbeat(self, **kwargs):
         """Handle Heartbeat from charge point"""
         logger.debug(f"Heartbeat from {self.id}")
