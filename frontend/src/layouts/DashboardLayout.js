@@ -98,6 +98,7 @@ const menuStructure = [
       { icon: UserCog, label: 'Role Management', path: '/admin/roles' },
       { icon: Building2, label: 'OEM Management', path: '/admin/oems' },
       { icon: Zap, label: 'Charger Models', path: '/admin/charger-models' },
+      { icon: Receipt, label: 'Account Transactions', path: '/admin/account-transactions' },
       { icon: CreditCard, label: 'RFID Management', path: '/admin/rfid' },
       { icon: DollarSign, label: 'Tariff Management', path: '/admin/tariffs' },
       { icon: Package, label: 'Asset Management', path: '/admin/assets' },
