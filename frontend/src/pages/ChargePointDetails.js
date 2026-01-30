@@ -33,10 +33,11 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const CONNECTOR_IMAGES = {
-  Type2: 'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=200&h=200&fit=crop',
-  CCS: 'https://images.unsplash.com/photo-1609976378583-02dca7b6fde1?w=200&h=200&fit=crop',
-  CHAdeMO: 'https://images.unsplash.com/photo-1609976378618-b0f0b8ac7b3a?w=200&h=200&fit=crop',
-  Type1: 'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=200&h=200&fit=crop',
+  Type2: 'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=200&h=200&fit=crop&q=80',
+  CCS: 'https://images.unsplash.com/photo-1609976378583-02dca7b6fde1?w=200&h=200&fit=crop&q=80',
+  CHAdeMO: 'https://images.unsplash.com/photo-1609976378618-b0f0b8ac7b3a?w=200&h=200&fit=crop&q=80',
+  Type1: 'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=200&h=200&fit=crop&q=80',
+  CCS2: 'https://images.unsplash.com/photo-1609976378583-02dca7b6fde1?w=200&h=200&fit=crop&q=80',
 };
 
 const ChargePointDetails = () => {
