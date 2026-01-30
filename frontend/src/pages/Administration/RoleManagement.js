@@ -590,6 +590,20 @@ const RoleManagement = () => {
         onPermissionChange={handlePermissionChange}
       />
 
+      <RoleDialog
+        isOpen={isEditRoleOpen}
+        onClose={() => {
+          setIsEditRoleOpen(false);
+          setSelectedRole(null);
+          resetRoleForm();
+        }}
+        onSubmit={handleEditRole}
+        title="Edit Role"
+        formData={roleFormData}
+        onFieldChange={handleRoleFieldChange}
+        onPermissionChange={handlePermissionChange}
+      />
+
       <InviteUserDialog
         isOpen={isInviteUserOpen}
         onClose={() => {
