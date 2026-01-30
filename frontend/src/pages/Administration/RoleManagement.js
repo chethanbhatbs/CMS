@@ -393,6 +393,15 @@ const RoleManagement = () => {
   };
 
   const handleToggleUserStatus = async (userId, currentStatus) => {
+    // Prevent self-deactivation
+    if (user.id === userId) {
+      toast.error('Cannot modify your own status', {
+        description: 'You cannot activate or deactivate yourself',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+      return;
+    }
+
     try {
       await axios.patch(`${API}/users/${userId}/status`, null, {
         params: { is_active: !currentStatus },
@@ -400,11 +409,15 @@ const RoleManagement = () => {
       });
 
       toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'}`, {
+        description: 'Access control updated immediately',
         style: { '--toast-description-color': 'rgb(71, 85, 105)' }
       });
       fetchUsers();
     } catch (error) {
-      toast.error('Failed to update user status');
+      toast.error('Failed to update user status', {
+        description: error.response?.data?.detail || 'An error occurred',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
     }
   };
 
