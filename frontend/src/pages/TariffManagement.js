@@ -467,6 +467,20 @@ const TariffManagement = () => {
     if (!window.confirm(`Delete "${tariffName}"? This cannot be undone.`)) return;
 
     try {
+      // Check if tariff is assigned
+      const assignmentCheck = await axios.get(`${API}/tariff-assignments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const isAssigned = assignmentCheck.data.some(a => a.tariff_id === tariffId);
+      if (isAssigned) {
+        toast.error('Cannot delete tariff', {
+          description: 'This tariff is currently assigned to locations or charge points',
+          style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+        });
+        return;
+      }
+
       await axios.delete(`${API}/tariffs/${tariffId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -477,7 +491,76 @@ const TariffManagement = () => {
       });
       fetchTariffs();
     } catch (error) {
-      toast.error('Failed to delete tariff');
+      toast.error('Failed to delete tariff', {
+        description: error.response?.data?.detail || 'An error occurred',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+    }
+  };
+
+  const openEditTariff = (tariff) => {
+    setSelectedTariff(tariff);
+    setTariffFormData({
+      tariff_name: tariff.tariff_name,
+      tariff_type: tariff.tariff_type,
+      unit_rate: tariff.unit_rate.toString(),
+      tax_percentage: tariff.tax_percentage.toString(),
+      description: tariff.description || '',
+      is_default: tariff.is_default
+    });
+    setIsEditTariffOpen(true);
+  };
+
+  const handleEditTariff = async () => {
+    try {
+      const payload = {
+        ...tariffFormData,
+        unit_rate: parseFloat(tariffFormData.unit_rate),
+        tax_percentage: parseFloat(tariffFormData.tax_percentage),
+      };
+
+      await axios.put(`${API}/tariffs/${selectedTariff.id}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      toast.success('Tariff updated successfully', {
+        description: `${tariffFormData.tariff_name} has been updated`,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+      setIsEditTariffOpen(false);
+      setSelectedTariff(null);
+      resetTariffForm();
+      fetchTariffs();
+    } catch (error) {
+      toast.error('Failed to update tariff', {
+        description: error.response?.data?.detail || 'An error occurred',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+    }
+  };
+
+  const handleSetDefaultTariff = async (tariffId, tariffName) => {
+    if (!window.confirm(`Set "${tariffName}" as default tariff? This will apply to all unassigned charge points.`)) return;
+
+    try {
+      // First, unset any existing default
+      await axios.put(`${API}/tariffs/unset-default`, null, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Set new default
+      await axios.put(`${API}/tariffs/${tariffId}`, 
+        { is_default: true },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+
+      toast.success('Default tariff set', {
+        description: `${tariffName} is now the default tariff`,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+      fetchTariffs();
+    } catch (error) {
+      toast.error('Failed to set default tariff');
     }
   };
 
