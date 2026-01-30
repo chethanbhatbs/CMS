@@ -303,6 +303,7 @@ const ChargePointFormDialog = ({
 
 const ChargePoints = () => {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [chargePoints, setChargePoints] = useState([]);
   const [locations, setLocations] = useState([]);
   const [oems, setOems] = useState([]);
