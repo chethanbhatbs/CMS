@@ -339,6 +339,28 @@ class UserInvitation(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class AccountTransaction(BaseModel):
+    """Account transactions for admin top-ups and user payments"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    transaction_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    user_name: str
+    phone: Optional[str] = None
+    gateway_id: Optional[str] = None  # Payment gateway transaction ID
+    session_id: Optional[str] = None  # Charging session ID (if linked)
+    transaction_type: str  # "CREDIT" or "DEBIT"
+    amount: float
+    currency: str = "USD"
+    status: str  # "PENDING", "COMPLETED", "FAILED", "REFUNDED"
+    payment_method: Optional[str] = None  # "CARD", "WALLET", "CASH", etc.
+    description: Optional[str] = None
+    invoice_url: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class RFIDCard(BaseModel):
     """RFID card for charging access"""
     model_config = ConfigDict(extra="ignore")
