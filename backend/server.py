@@ -1653,6 +1653,146 @@ async def update_user_status(
 
 
 # ============================================
+# RFID MANAGEMENT ENDPOINTS
+# ============================================
+
+class RFIDCardCreate(BaseModel):
+    rfid_tag: str
+    serial_number: Optional[str] = None
+    user_id: Optional[str] = None
+    user_name: Optional[str] = None
+    expiry_date: Optional[datetime] = None
+
+
+class RFIDCardResponse(BaseModel):
+    id: str
+    rfid_tag: str
+    serial_number: Optional[str]
+    user_id: Optional[str]
+    user_name: Optional[str]
+    expiry_date: Optional[datetime]
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+@api_router.get("/rfid-cards", response_model=List[RFIDCardResponse])
+async def get_rfid_cards(
+    status: Optional[str] = None,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get all RFID cards"""
+    query = {}
+    if status:
+        query["status"] = status
+    
+    cards = await db.rfid_cards.find(query, {"_id": 0}).to_list(100)
+    
+    for card in cards:
+        if isinstance(card.get("created_at"), str):
+            card["created_at"] = datetime.fromisoformat(card["created_at"])
+        if isinstance(card.get("updated_at"), str):
+            card["updated_at"] = datetime.fromisoformat(card["updated_at"])
+        if card.get("expiry_date") and isinstance(card["expiry_date"], str):
+            card["expiry_date"] = datetime.fromisoformat(card["expiry_date"])
+    
+    return cards
+
+
+@api_router.post("/rfid-cards", response_model=RFIDCardResponse)
+async def create_rfid_card(
+    card_data: RFIDCardCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Create a new RFID card"""
+    from models import RFIDCard
+    
+    # Check if RFID tag already exists
+    existing = await db.rfid_cards.find_one({"rfid_tag": card_data.rfid_tag}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="RFID tag already exists")
+    
+    card = RFIDCard(**card_data.model_dump())
+    
+    card_dict = card.model_dump()
+    card_dict['created_at'] = card_dict['created_at'].isoformat()
+    card_dict['updated_at'] = card_dict['updated_at'].isoformat()
+    if card_dict.get('expiry_date'):
+        card_dict['expiry_date'] = card_dict['expiry_date'].isoformat()
+    
+    await db.rfid_cards.insert_one(card_dict)
+    
+    return RFIDCardResponse(**card.model_dump())
+
+
+@api_router.put("/rfid-cards/{card_id}", response_model=RFIDCardResponse)
+async def update_rfid_card(
+    card_id: str,
+    card_data: RFIDCardCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update an RFID card"""
+    existing = await db.rfid_cards.find_one({"id": card_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="RFID card not found")
+    
+    update_data = card_data.model_dump()
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    if update_data.get('expiry_date'):
+        update_data['expiry_date'] = update_data['expiry_date'].isoformat()
+    
+    await db.rfid_cards.update_one({"id": card_id}, {"$set": update_data})
+    
+    updated = await db.rfid_cards.find_one({"id": card_id}, {"_id": 0})
+    if isinstance(updated.get("created_at"), str):
+        updated["created_at"] = datetime.fromisoformat(updated["created_at"])
+    if isinstance(updated.get("updated_at"), str):
+        updated["updated_at"] = datetime.fromisoformat(updated["updated_at"])
+    if updated.get("expiry_date") and isinstance(updated["expiry_date"], str):
+        updated["expiry_date"] = datetime.fromisoformat(updated["expiry_date"])
+    
+    return updated
+
+
+@api_router.patch("/rfid-cards/{card_id}/status")
+async def update_rfid_status(
+    card_id: str,
+    status: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update RFID card status"""
+    if status not in ["ACTIVE", "INACTIVE", "EXPIRED"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
+    result = await db.rfid_cards.update_one(
+        {"id": card_id},
+        {"$set": {"status": status, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="RFID card not found")
+    
+    return {"message": f"RFID card status updated to {status}"}
+
+
+@api_router.delete("/rfid-cards/{card_id}")
+async def delete_rfid_card(
+    card_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Delete an RFID card"""
+    result = await db.rfid_cards.update_one(
+        {"id": card_id},
+        {"$set": {"status": "INACTIVE", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="RFID card not found")
+    
+    return {"message": "RFID card deleted successfully"}
+
+
+# ============================================
 # ACCOUNT TRANSACTIONS ENDPOINTS
 # ============================================
 
