@@ -327,6 +327,9 @@ const ChargePoints = () => {
     serial_number: '',
     firmware_version: '',
     go_live_date: '',
+    is_24x7: true,
+    availability_from: '',
+    availability_to: '',
   });
 
   useEffect(() => {
