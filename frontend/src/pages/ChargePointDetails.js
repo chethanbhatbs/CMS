@@ -410,7 +410,7 @@ const ChargePointDetails = () => {
             </Button>
             <Button
               variant="outline"
-              onClick={() => handleOCPPCommand('Change Availability')}
+              onClick={() => handleOCPPCommand('Change Availability', { connector_id: 0, type: 'Operative' })}
               data-testid="change-availability-btn"
             >
               <PowerOff className="mr-2 h-4 w-4" />
@@ -427,6 +427,82 @@ const ChargePointDetails = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Assigned Tariff */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Assigned Tariff</CardTitle>
+          <CardDescription>Current pricing configuration</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {assignedTariff ? (
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-slate-600">Tariff Name</p>
+                <button
+                  onClick={() => navigate('/admin/tariffs')}
+                  className="text-lg font-semibold text-primary hover:underline"
+                >
+                  {assignedTariff.tariff_name}
+                </button>
+              </div>
+              <div>
+                <p className="text-sm text-slate-600">Tariff Type</p>
+                <Badge variant="outline">
+                  {assignedTariff.tariff_type === 'energy_based' ? 'Energy-Based (per kWh)' : 'Time-Based (per minute)'}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-sm text-slate-600">Unit Rate</p>
+                <p className="text-lg font-bold">${assignedTariff.unit_rate.toFixed(2)}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-500">
+              <p>No tariff assigned</p>
+              <p className="text-sm mt-1">Assign a tariff from Tariff Management</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* OCPP Message Logs */}
+      {ocppMessages.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent OCPP Messages</CardTitle>
+            <CardDescription>Last {ocppMessages.length} messages</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Timestamp</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Level</TableHead>
+                  <TableHead>Message</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ocppMessages.slice(0, 10).map((msg, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell className="text-sm">
+                      {new Date(msg.timestamp).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">{msg.action}</TableCell>
+                    <TableCell>
+                      <Badge variant={msg.log_level === 'ERROR' ? 'destructive' : msg.log_level === 'WARNING' ? 'secondary' : 'default'}>
+                        {msg.log_level}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">{msg.message}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
