@@ -235,19 +235,28 @@ class ChargingTransaction(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     transaction_id: str
     session_id: str
-    user_id: str
-    user_type: str
+    user_id: Optional[str] = None
+    user_name: Optional[str] = None
+    location_id: str
+    location_name: str
     charge_point_id: str
     connector_id: int
     start_time: datetime
     end_time: datetime
     duration_minutes: int
     energy_kwh: float
-    tariff_id: str
-    amount: float
+    tariff_id: Optional[str] = None
+    tariff_name: Optional[str] = None
+    unit_rate: float = 0.0
+    session_type: str = "PUBLIC"  # PUBLIC, RESERVED, FLEET
+    base_cost: float = 0.0
+    tax_amount: float = 0.0
+    total_cost: float = 0.0
     currency: str = "USD"
     payment_method: Optional[str] = None
     status: TransactionStatus = TransactionStatus.COMPLETED
+    meter_start: float = 0.0  # kWh
+    meter_stop: float = 0.0  # kWh
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
