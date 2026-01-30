@@ -1,0 +1,24 @@
+# Minimal requirements for LOCAL DEVELOPMENT on macOS
+# No Docker, No Supervisor, No Emergent-specific packages
+
+# Core Framework
+fastapi==0.110.1
+uvicorn[standard]==0.29.0
+python-dotenv==1.0.1
+pydantic==2.6.4
+pydantic-settings==2.2.1
+
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.9
+
+# Database (MongoDB)
+motor==3.4.0
+
+# OCPP Support
+ocpp==2.1.0
+websockets==12.0
+
+# Email validation
+email-validator==2.1.1
