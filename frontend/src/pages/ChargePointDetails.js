@@ -97,10 +97,92 @@ const ChargePointDetails = () => {
     }
   };
 
-  const handleOCPPCommand = (command) => {
-    toast.info(`${command} command`, {
-      description: 'OCPP integration will be implemented in next phase',
+  const handleOCPPCommand = async (command, params = {}) => {
+    if (!window.confirm(`Send ${command} to charge point ${chargePoint.charge_point_id}?`)) {
+      return;
+    }
+    
+    try {
+      let response;
+      const cpId = chargePoint.charge_point_id;
+      
+      switch (command) {
+        case 'Soft Reset':
+          response = await axios.post(`${API}/charge-points/${cpId}/reset`, 
+            { reset_type: 'Soft' },
+            { headers: { Authorization: `Bearer ${token}` }}
+          );
+          break;
+        case 'Hard Reset':
+          response = await axios.post(`${API}/charge-points/${cpId}/reset`,
+            { reset_type: 'Hard' },
+            { headers: { Authorization: `Bearer ${token}` }}
+          );
+          break;
+        case 'Change Availability':
+          response = await axios.post(`${API}/charge-points/${cpId}/change-availability`,
+            { connector_id: params.connector_id || 0, availability_type: params.type || 'Operative' },
+            { headers: { Authorization: `Bearer ${token}` }}
+          );
+          break;
+        default:
+          toast.info(`${command}`, {
+            description: 'Command will be implemented based on OCPP message type',
+            style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+          });
+          return;
+      }
+      
+      if (response.data.status === 'Accepted') {
+        toast.success(`${command} accepted`, {
+          description: `Charge point confirmed the command`,
+          style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+        });
+      } else {
+        toast.error(`${command} rejected`, {
+          description: `Charge point rejected: ${response.data.status}`,
+          style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+        });
+      }
+      
+      // Refresh data
+      fetchChargePointDetails();
+    } catch (error) {
+      const errorMsg = error.response?.status === 404 
+        ? 'Charge point not connected via WebSocket'
+        : error.response?.data?.detail || 'Command failed or timed out';
+      
+      toast.error(`${command} failed`, {
+        description: errorMsg,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+    }
+  };
+  
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard', {
+      description: 'WebSocket URL copied',
+      style: { '--toast-description-color': 'rgb(71, 85, 105)' }
     });
+  };
+  
+  const getDerivedStatus = () => {
+    if (!chargePoint || !chargePoint.connectors) return 'UNKNOWN';
+    
+    const statuses = chargePoint.connectors.map(c => c.status);
+    
+    // OCPP-correct status derivation
+    if (statuses.includes('FAULTED') || statuses.includes('Faulted')) {
+      return 'FAULTED';
+    }
+    if (statuses.includes('AVAILABLE') || statuses.includes('Available')) {
+      return 'AVAILABLE';
+    }
+    if (statuses.every(s => ['OCCUPIED', 'Charging', 'Preparing', 'Finishing'].includes(s))) {
+      return 'OCCUPIED';
+    }
+    return 'UNAVAILABLE';
   };
 
   const getStatusColor = (status) => {
