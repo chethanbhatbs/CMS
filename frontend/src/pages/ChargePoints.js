@@ -338,6 +338,8 @@ const ChargePoints = () => {
     fetchLocations();
     fetchOEMs();
     fetchAllChargerModels();
+    fetchTariffs();
+    fetchTariffAssignments();
   }, []);
 
   useEffect(() => {
