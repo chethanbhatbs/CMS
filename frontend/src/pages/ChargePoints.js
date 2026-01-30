@@ -625,6 +625,15 @@ const ChargePoints = () => {
     return location ? location.name : 'Unknown';
   };
 
+  const getAssignedTariff = (cpId) => {
+    const assignment = tariffAssignments.find(a => a.charge_point_id === cpId);
+    if (assignment) {
+      const tariff = tariffs.find(t => t.id === assignment.tariff_id);
+      return tariff ? tariff.tariff_name : 'Unknown';
+    }
+    return null;
+  };
+
   const getStatusBadgeVariant = (status) => {
     const variants = {
       'AVAILABLE': 'default',
