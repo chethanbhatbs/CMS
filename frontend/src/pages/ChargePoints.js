@@ -231,6 +231,57 @@ const ChargePointFormDialog = ({
               </div>
             </div>
           </div>
+
+          {/* Availability Schedule */}
+          <div className="border-t pt-4">
+            <h3 className="text-sm font-semibold text-slate-900 mb-3">Availability Schedule</h3>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="is_24x7"
+                  checked={formData.is_24x7}
+                  onChange={(e) => onFieldChange('is_24x7', e.target.checked)}
+                  className="h-4 w-4"
+                  data-testid="24x7-checkbox"
+                />
+                <Label htmlFor="is_24x7" className="font-medium">
+                  24×7 Availability
+                </Label>
+              </div>
+              
+              {!formData.is_24x7 && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="availability_from">Available From</Label>
+                    <Input
+                      id="availability_from"
+                      type="time"
+                      value={formData.availability_from || ''}
+                      onChange={(e) => onFieldChange('availability_from', e.target.value)}
+                      data-testid="availability-from-input"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="availability_to">Available To</Label>
+                    <Input
+                      id="availability_to"
+                      type="time"
+                      value={formData.availability_to || ''}
+                      onChange={(e) => onFieldChange('availability_to', e.target.value)}
+                      data-testid="availability-to-input"
+                    />
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-slate-500">
+                {formData.is_24x7 
+                  ? 'Charge point is available 24 hours a day, 7 days a week'
+                  : 'Charge point will only accept sessions during specified time window'}
+              </p>
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose} data-testid="cancel-chargepoint-btn">
