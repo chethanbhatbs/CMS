@@ -717,6 +717,7 @@ const ChargePoints = () => {
                   <TableHead>Vendor</TableHead>
                   <TableHead>Model</TableHead>
                   <TableHead>Connectors</TableHead>
+                  <TableHead>Assigned Tariff</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
