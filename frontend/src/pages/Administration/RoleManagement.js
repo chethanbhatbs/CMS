@@ -298,6 +298,74 @@ const RoleManagement = () => {
     }
   };
 
+  const handleEditRole = async () => {
+    try {
+      await axios.put(`${API}/roles/${selectedRole.id}`, roleFormData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      toast.success('Role updated successfully', {
+        description: `${roleFormData.role_name} has been updated`,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+      setIsEditRoleOpen(false);
+      setSelectedRole(null);
+      resetRoleForm();
+      fetchRoles();
+    } catch (error) {
+      toast.error('Failed to update role', {
+        description: error.response?.data?.detail || 'An error occurred',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+    }
+  };
+
+  const handleDeleteRole = async (roleId, roleName) => {
+    // Prevent deletion of system roles
+    if (['SUPER_ADMIN', 'CPO_ADMIN', 'OPERATOR', 'FINANCE'].includes(roleName)) {
+      toast.error('Cannot delete system role', {
+        description: `${roleName} is a protected system role`,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+      return;
+    }
+
+    // Check if it's user's own role
+    if (user.role === roleName) {
+      toast.error('Cannot delete your own role', {
+        description: 'You cannot delete the role assigned to yourself',
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+      return;
+    }
+
+    if (!window.confirm(`Delete role "${roleName}"? This cannot be undone.`)) return;
+
+    try {
+      await axios.delete(`${API}/roles/${roleId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      toast.success('Role deleted', {
+        description: `${roleName} has been removed`,
+        style: { '--toast-description-color': 'rgb(71, 85, 105)' }
+      });
+      fetchRoles();
+    } catch (error) {
+      toast.error('Failed to delete role');
+    }
+  };
+
+  const openEditRole = (role) => {
+    setSelectedRole(role);
+    setRoleFormData({
+      role_name: role.role_name,
+      description: role.description,
+      permissions: role.permissions || {}
+    });
+    setIsEditRoleOpen(true);
+  };
+
   const handleInviteUser = async () => {
     try {
       const response = await axios.post(`${API}/users/invite`, inviteFormData, {
