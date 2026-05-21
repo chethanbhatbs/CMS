@@ -145,6 +145,8 @@ cd backend && python -m pytest tests/
 python backend_test.py
 ```
 
-## License
+---
 
-MIT
+<p align="center">
+  <sub>Built with <a href="https://emergent.sh">Emergent</a> + <a href="https://claude.ai/code">Claude Code</a> · refined by hand</sub>
+</p>
